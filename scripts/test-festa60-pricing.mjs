@@ -33,12 +33,13 @@ const equal = (actual, expected, message) => {
   assertions += 1;
 };
 
+equal(feePeriodForDate(new Date("2026-10-15T15:00:00Z")), "early", "October 16 retains extended early discount");
 equal(REGISTRATION_STATUS, "open", "registration is open");
-equal(FEE_PERIOD_LABELS.early, "超早期申込（2026年10月15日まで）", "early application label ends on October 15");
-equal(FEE_PERIOD_LABELS.year_end, "早期申込（2026年10月16日〜12月31日）", "year-end application label starts on October 16");
-equal(feePeriodForDate(new Date("2026-10-15T14:59:59Z")), "early", "early period includes October 15 in Japan");
-equal(feePeriodForDate(new Date("2026-10-15T15:00:00Z")), "year_end", "year-end period starts October 16 in Japan");
-equal(isApplicationOpen(new Date("2026-10-15T15:00:00Z")), true, "registration stays open during the extended early period");
+equal(FEE_PERIOD_LABELS.early, "超早期申込（2026年10月31日まで）", "early application label ends on October 31");
+equal(FEE_PERIOD_LABELS.year_end, "早期申込（2026年11月1日〜12月31日）", "year-end application label starts on November 1");
+equal(feePeriodForDate(new Date("2026-10-31T14:59:59Z")), "early", "early period includes October 31 in Japan");
+equal(feePeriodForDate(new Date("2026-10-31T15:00:00Z")), "year_end", "year-end period starts November 1 in Japan");
+equal(isApplicationOpen(new Date("2026-10-31T15:00:00Z")), true, "registration stays open during the extended early period");
 
 for (const cohort of cohorts) {
   for (const period of periods) {

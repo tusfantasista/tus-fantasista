@@ -52,7 +52,7 @@ const checks = [
   ["bank instructions tracked", files.worker.includes("renderBankTransferInstructionsEmail") && files.worker.includes('kind === "instructions"')],
   ["online application completes after payment", files.registerScript.includes("お支払いが完了し、申込が完了しました") && files.registerScript.includes("申込は完了していません")],
   ["registration is open in shared server and browser configuration", files.pricing.includes('REGISTRATION_STATUS = "open"') && files.worker.includes("application_open: isApplicationOpen()")],
-  ["extended early period is shared", files.pricing.includes('early: "超早期申込（2026年10月15日まで）"') && files.pricing.includes('year_end: "早期申込（2026年10月16日〜12月31日）"') && files.registerScript.includes("sharedFeePeriodForDate")],
+  ["extended early period is shared", files.pricing.includes('early: "超早期申込（2026年10月31日まで）"') && files.pricing.includes('year_end: "早期申込（2026年11月1日〜12月31日）"') && files.registerScript.includes("sharedFeePeriodForDate")],
   ["public payment methods name supported and unavailable brands", files.register.includes("Visa、Mastercard、American Express") && files.register.includes("JCB、Diners Club、Discoverはご利用いただけません") && files.festaSupport.includes("JCB、Diners Club、Discoverはご利用いただけません") && files.festaFaq.includes("JCB、Diners Club、Discoverはご利用いただけません")],
   ["no pre-payment online email", files.worker.includes('reason: "Sent only after payment confirmation."') && !files.worker.includes("renderApplicationReceivedEmail")],
   ["preview transfer warning", files.register.includes("この画面の口座へは、まだ振り込まないでください")],

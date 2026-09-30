@@ -96,8 +96,8 @@ export const FUNDRAISING_CONFIG = {
 };
 
 export const FEE_PERIOD_LABELS = {
-  early: "超早期申込（2026年10月15日まで）",
-  year_end: "早期申込（2026年10月16日〜12月31日）",
+  early: "超早期申込（2026年10月31日まで）",
+  year_end: "早期申込（2026年11月1日〜12月31日）",
   regular: "通常申込（2027年1月1日〜1月31日）",
 };
 
@@ -139,7 +139,7 @@ export function feePeriodForDate(date = new Date()) {
   const instant = date instanceof Date ? date : new Date(date);
   if (Number.isNaN(instant.getTime())) return "regular";
   const jstDate = new Date(instant.getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  if (jstDate <= "2026-10-15") return "early";
+  if (jstDate <= "2026-10-31") return "early";
   if (jstDate <= "2026-12-31") return "year_end";
   return "regular";
 }
