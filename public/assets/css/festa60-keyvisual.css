@@ -1,4 +1,4 @@
-/* The supplied artwork stays whole; the historical film remains interactive below. */
+/* The supplied artwork is preserved; only its film layers and photo windows move. */
 .hero.hero--keyvisual {
   min-height: 0;
   padding: 40px 0 62px;
@@ -33,6 +33,117 @@
 .keyvisual-artwork img {
   display: block;
   width: 100%;
+}
+
+.keyvisual-figure {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+}
+
+.keyvisual-artwork {
+  position: relative;
+  isolation: isolate;
+}
+
+.keyvisual-fallback {
+  display: block;
+}
+
+.keyvisual-motion-layers,
+.keyvisual-motion-film,
+.keyvisual-motion-layers img,
+.keyvisual-motion-layers canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.keyvisual-motion-layers {
+  overflow: hidden;
+}
+
+.keyvisual-artwork .keyvisual-motion-layers img {
+  height: 100%;
+  aspect-ratio: auto;
+}
+
+.keyvisual-motion-film {
+  transform: none;
+}
+
+.keyvisual-motion-foreground {
+  z-index: 2;
+}
+
+.keyvisual-figure[data-motion-state="running"] .keyvisual-motion-film {
+  will-change: transform;
+  animation: keyvisual-film-upper 28s ease-in-out infinite;
+}
+
+.keyvisual-figure[data-motion-state="running"] .keyvisual-motion-film--lower {
+  animation-name: keyvisual-film-lower;
+  animation-duration: 32s;
+}
+
+.keyvisual-figure[data-motion-state="paused"] .keyvisual-motion-film,
+.keyvisual-figure[data-motion-state="static"] .keyvisual-motion-film {
+  animation: none;
+  transform: none;
+  will-change: auto;
+}
+
+.keyvisual-motion-controls {
+  text-align: right;
+}
+
+.keyvisual-motion-toggle {
+  margin: 12px 0 0;
+  padding: 6px 0 6px 12px;
+  color: #c8b38c;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.65;
+  cursor: pointer;
+}
+
+.keyvisual-motion-toggle:focus-visible {
+  outline: 2px solid #d6b779;
+  outline-offset: 4px;
+}
+
+.keyvisual-motion-layers[hidden],
+.keyvisual-motion-toggle[hidden] {
+  display: none;
+}
+
+@keyframes keyvisual-film-upper {
+  0%, 100% { transform: translate(0, 0); }
+  33% { transform: translate(var(--keyvisual-shift, 1px), calc(var(--keyvisual-shift, 1px) * -.35)); }
+  66% { transform: translate(calc(var(--keyvisual-shift, 1px) * -.7), calc(var(--keyvisual-shift, 1px) * .4)); }
+}
+
+@keyframes keyvisual-film-lower {
+  0%, 100% { transform: translate(0, 0); }
+  33% { transform: translate(calc(var(--keyvisual-shift, 1px) * -.8), calc(var(--keyvisual-shift, 1px) * .25)); }
+  66% { transform: translate(calc(var(--keyvisual-shift, 1px) * .7), calc(var(--keyvisual-shift, 1px) * -.35)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .keyvisual-motion-layers,
+  .keyvisual-motion-toggle {
+    display: none;
+  }
+
+  .keyvisual-motion-film {
+    animation: none !important;
+    transform: none !important;
+  }
 }
 
 .keyvisual-artwork img {
@@ -181,7 +292,7 @@
     gap: 24px;
   }
 
-  .keyvisual-artwork {
+  .keyvisual-figure {
     max-width: 560px;
     margin: 0 auto;
   }
