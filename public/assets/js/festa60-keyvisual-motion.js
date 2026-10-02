@@ -727,7 +727,8 @@
   }
 
   function loadPhoto(photo) {
-    const url = photoUrl(photo.thumbnail || photo.image);
+    // Chronicle thumbnails may be cropped. Keep the full photograph's composition.
+    const url = photoUrl(photo.image || photo.thumbnail);
     if (imageCache.has(url)) {
       const result = imageCache.get(url);
       imageCache.delete(url);
@@ -742,7 +743,7 @@
       img.src = url;
     });
     imageCache.set(url, promise);
-    cacheTrim(imageCache, 36);
+    cacheTrim(imageCache, 18);
     promise.catch(() => {
       if (imageCache.get(url) === promise) imageCache.delete(url);
     });
