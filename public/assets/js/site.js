@@ -2,6 +2,36 @@
   const assetLink = document.querySelector('link[href*="assets/css/"]');
   const assetPrefix = assetLink ? assetLink.getAttribute("href").split("assets/css/")[0] : "./";
 
+  function initStagingNotice() {
+    const reviewHost = /^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)?fantasista-review-202605-staging\.pages\.dev$/;
+    if (!reviewHost.test(location.hostname.toLowerCase()) || !document.body || document.getElementById("staging-environment-notice")) return;
+
+    const notice = document.createElement("p");
+    notice.id = "staging-environment-notice";
+    notice.setAttribute("role", "note");
+    notice.textContent = "テスト環境・本番ではありません";
+    Object.assign(notice.style, {
+      position: "fixed",
+      left: "12px",
+      bottom: "12px",
+      zIndex: "2147483640",
+      margin: "0",
+      padding: "8px 12px",
+      maxWidth: "calc(100vw - 24px)",
+      boxSizing: "border-box",
+      border: "1px solid #b28534",
+      borderRadius: "4px",
+      background: "#fff0c2",
+      color: "#3b2b0a",
+      fontSize: "14px",
+      fontWeight: "600",
+      lineHeight: "1.5",
+      letterSpacing: "normal",
+      pointerEvents: "none"
+    });
+    document.body.appendChild(notice);
+  }
+
   function initMobileMenu() {
     const toggle = document.querySelector(".menu-toggle");
     const header = document.querySelector(".site-header, .header");
@@ -626,6 +656,7 @@
     });
   }
 
+  initStagingNotice();
   initStructuredNavigation();
   initMainFooterLinks();
   initFestaGuideMenus();
