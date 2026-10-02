@@ -1,0 +1,237 @@
+/* The supplied artwork stays whole; the historical film remains interactive below. */
+.hero.hero--keyvisual {
+  min-height: 0;
+  padding: 40px 0 62px;
+  background: #040812;
+}
+
+.hero.hero--keyvisual::before,
+.hero.hero--keyvisual::after {
+  content: none;
+}
+
+.keyvisual-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(32px, 4.5vw, 64px);
+}
+
+.hero.hero--keyvisual .keyvisual-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.keyvisual-artwork,
+.keyvisual-artwork img {
+  display: block;
+  width: 100%;
+}
+
+.keyvisual-artwork img {
+  height: auto;
+  aspect-ratio: 1600 / 2263;
+}
+
+.keyvisual-artwork:focus-visible {
+  outline: 2px solid #d6b779;
+  outline-offset: 6px;
+}
+
+.keyvisual-summary {
+  min-width: 0;
+  color: #f4eddf;
+}
+
+.keyvisual-summary .eyebrow {
+  color: #d6b779;
+  letter-spacing: .1em;
+}
+
+.keyvisual-copy {
+  margin: 18px 0 20px;
+  color: #ebd8b0;
+  font-family: "Noto Serif JP", "Yu Mincho", "Hiragino Mincho ProN", Georgia, serif;
+  font-size: clamp(22px, 2.1vw, 31px);
+  font-weight: 500;
+  line-height: 1.65;
+  letter-spacing: .035em;
+}
+
+.keyvisual-copy span {
+  display: block;
+}
+
+.keyvisual-lead {
+  color: #c8c1b7;
+  font-size: 14px;
+  line-height: 1.95;
+}
+
+.keyvisual-details {
+  margin: 24px 0 0;
+}
+
+.keyvisual-details > div {
+  padding: 12px 0;
+  border-top: 1px solid rgba(205, 168, 101, .24);
+}
+
+.keyvisual-details dt {
+  margin: 0 0 6px;
+  color: #c8ac7a;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .055em;
+}
+
+.keyvisual-details dd {
+  margin: 0;
+  color: #f1e6ce;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.7;
+}
+
+.keyvisual-details .keyvisual-date {
+  font-size: clamp(20px, 2vw, 26px);
+  letter-spacing: .025em;
+}
+
+.keyvisual-details small {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  color: #c8c1b7;
+}
+
+.keyvisual-note {
+  margin-top: 8px;
+  color: #a9a398;
+  font-size: 11px;
+  line-height: 1.8;
+}
+
+.keyvisual-summary .keyvisual-cta {
+  justify-content: flex-start;
+  margin-top: 24px;
+  gap: 12px;
+}
+
+.keyvisual-cta .btn {
+  min-height: 48px;
+  padding: 13px 20px;
+  font-size: 14px;
+}
+
+.keyvisual-summary .keyvisual-links {
+  justify-content: flex-start;
+  margin-top: 18px;
+  gap: 10px 18px;
+}
+
+.keyvisual-links a {
+  font-size: 12px;
+  color: #d7bf91;
+}
+
+.film-history-section {
+  padding: 48px 0 52px;
+  overflow: hidden;
+  background: #03070d;
+  scroll-margin-top: 100px;
+}
+
+.film-history-heading {
+  max-width: 760px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.film-history-heading h2 {
+  color: #e9d8b5;
+  font-family: "Noto Serif JP", "Yu Mincho", "Hiragino Mincho ProN", Georgia, serif;
+  font-size: clamp(22px, 2.8vw, 32px);
+  font-weight: 500;
+  letter-spacing: .06em;
+  line-height: 1.6;
+}
+
+.film-history-heading p {
+  margin-top: 12px;
+  color: #b9b0a0;
+  font-size: 13px;
+  line-height: 1.9;
+}
+
+@media (max-width: 900px) {
+  .hero.hero--keyvisual {
+    padding: 24px 0 40px;
+  }
+
+  .keyvisual-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+
+  .keyvisual-artwork {
+    max-width: 560px;
+    margin: 0 auto;
+  }
+
+  .keyvisual-summary {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 560px;
+    margin: 0 auto;
+  }
+
+  .keyvisual-summary .keyvisual-cta {
+    order: -1;
+    justify-content: center;
+    margin: 0 0 24px;
+  }
+
+  .keyvisual-copy {
+    font-size: clamp(21px, 4.5vw, 28px);
+    margin-top: 12px;
+  }
+
+  .keyvisual-summary .eyebrow {
+    justify-content: flex-start;
+  }
+
+  .film-history-section {
+    padding-top: 34px;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero.hero--keyvisual {
+    padding-top: 16px;
+  }
+
+  .hero--keyvisual .wrap {
+    width: calc(100% - 24px);
+  }
+
+  .keyvisual-cta .btn {
+    width: 100%;
+  }
+
+  .keyvisual-details .keyvisual-date {
+    font-size: 21px;
+  }
+
+  .film-history-heading {
+    text-align: left;
+  }
+}
