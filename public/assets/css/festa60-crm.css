@@ -201,11 +201,15 @@ body.festa60-crm {
 
 .crm-stack {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
   gap: 16px;
 }
 
 .crm-field {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
   gap: 6px;
 }
 
@@ -285,6 +289,8 @@ body.festa60-crm {
 .crm-field textarea,
 .crm-token {
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
   min-height: 44px;
   border: 1px solid var(--crm-line);
   border-radius: 10px;
@@ -376,7 +382,7 @@ body.festa60-crm {
 
 .crm-input-action {
   display: grid;
-  grid-template-columns: minmax(13rem, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
 }
 
@@ -396,7 +402,7 @@ body.festa60-crm {
 }
 
 .crm-address-grid {
-  grid-template-columns: minmax(360px, 0.9fr) minmax(280px, 1.1fr);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
 }
 
 .crm-companion {
