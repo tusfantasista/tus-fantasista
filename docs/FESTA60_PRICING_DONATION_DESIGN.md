@@ -67,7 +67,7 @@ Administrators may update consent, publication name, maiden-name display, joint-
 - no refund timestamp
 - status is neither cancelled nor refunded
 
-Unpaid bank transfers are therefore excluded. Anonymous supporters still contribute to counts and donation totals. OBOG participant and companion counts are hidden until the paid OBOG participant count reaches `PUBLIC_PARTICIPANT_COUNT_THRESHOLD` (default 20). Donation progress is visible from zero.
+Unpaid bank transfers are therefore excluded. Anonymous supporters still contribute to counts and donation totals. OBOG participant counts, companion counts, participating graduation decades, and donation progress are visible from zero. The former 20-person gate was removed on 2026-10-12; `PUBLIC_PARTICIPANT_COUNT_THRESHOLD` no longer overrides the shared zero threshold. A zero-participant state explicitly states that no paid participation applications have been received.
 
 The endpoint is aggregate-only, with an explicit-consent supporter list as the sole exception. CDN caching is allowed for five minutes with stale-while-revalidate behavior.
 
@@ -79,7 +79,7 @@ The endpoint is aggregate-only, with an explicit-consent supporter list as the s
 4. Test all pricing combinations, both payment methods, webhook confirmation, email, dashboard, CSV, and public summary.
 5. Confirm old paid records retain their stored amount and remain non-public by default.
 6. After explicit production approval, back up production D1 and apply the same migration.
-7. Set or verify `PRICING_RULE_EFFECTIVE_AT` and `PUBLIC_PARTICIPANT_COUNT_THRESHOLD`.
+7. Set or verify `PRICING_RULE_EFFECTIVE_AT`. Confirm public participation progress is visible below 20 participants.
 8. Deploy the exact reviewed commit and complete a low-value end-to-end payment check.
 
 Do not deploy code that reads the new columns before the migration is applied.

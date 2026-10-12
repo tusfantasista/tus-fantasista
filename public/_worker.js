@@ -3930,7 +3930,7 @@ async function onRequestPost7() {
 __name(onRequestPost7, "onRequestPost");
 
 // Public, aggregate-only participation and fundraising summary.
-async function getPublicFundraisingSummary(db, env) {
+async function getPublicFundraisingSummary(db) {
   const rows = await db.prepare(
     `SELECT
         a.ticket_type,
@@ -4030,10 +4030,8 @@ async function getPublicFundraisingSummary(db, env) {
       });
     }
   }
-  const configuredThreshold = Number(env.PUBLIC_PARTICIPANT_COUNT_THRESHOLD || FUNDRAISING_CONFIG.participant_count_public_threshold);
-  const participantThreshold = Number.isFinite(configuredThreshold) && configuredThreshold >= 0
-    ? configuredThreshold
-    : FUNDRAISING_CONFIG.participant_count_public_threshold;
+  // Show progress from the start; the former environment threshold no longer applies.
+  const participantThreshold = FUNDRAISING_CONFIG.participant_count_public_threshold;
   const primaryTarget = FUNDRAISING_CONFIG.primary_target_jpy;
   const participantTarget = FUNDRAISING_CONFIG.participant_target_count;
   const participantCountVisible = obogParticipants >= participantThreshold;
@@ -4067,7 +4065,7 @@ async function onRequestGet8({ request, env, waitUntil }) {
     const rateLimited = await enforceRateLimit(request, env, "PUBLIC_SUMMARY_RATE_LIMITER", "festa60-public-summary");
     if (rateLimited) return rateLimited;
 
-    const summary = await getPublicFundraisingSummary(requireDb(env), env);
+    const summary = await getPublicFundraisingSummary(requireDb(env));
     const response = json(
       { ok: true, summary },
       { headers: { "cache-control": "public, max-age=60, s-maxage=300, stale-while-revalidate=600" } },

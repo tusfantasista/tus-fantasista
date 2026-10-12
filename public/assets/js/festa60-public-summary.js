@@ -33,7 +33,7 @@ function renderSummaryUnavailable(root) {
 
 async function loadPublicSummary() {
   try {
-    const response = await fetch("/api/festa60/public-summary", { headers: { accept: "application/json" } });
+    const response = await fetch("/api/festa60/public-summary?v=20261012-1", { headers: { accept: "application/json" } });
     if (!response.ok) throw new Error(`summary_${response.status}`);
     const payload = await response.json();
     const summary = payload.summary || payload;
@@ -105,7 +105,6 @@ function renderAttendanceProgress(root, summary) {
   const isVisible = Boolean(summary.participant_count_visible);
   const current = Math.max(0, Number(summary.obog_participant_count || 0));
   const target = Math.max(1, Number(summary.participant_target_count || FUNDRAISING_CONFIG.participant_target_count));
-  const threshold = Math.max(0, Number(summary.participant_count_threshold || FUNDRAISING_CONFIG.participant_count_public_threshold));
   const remaining = Math.max(0, Number(summary.participant_target_remaining_count ?? target - current));
   const decades = Array.isArray(summary.participating_decades) ? summary.participating_decades : [];
   const bar = root.querySelector("[data-summary-attendance-progress-bar]");
@@ -115,9 +114,13 @@ function renderAttendanceProgress(root, summary) {
     progress?.setAttribute("aria-valuemax", String(target));
     progress?.setAttribute("aria-valuenow", String(isVisible ? Math.min(current, target) : 0));
   }
-  setText(root, "[data-summary-decades]", isVisible && decades.length
-    ? `参加している卒部年代：${decades.join("・")}`
-    : `参加申込が${formatNumber(threshold)}名以上になった時点で、卒部年代の広がりを表示します。`);
+  setText(root, "[data-summary-decades]", isVisible
+    ? decades.length
+      ? `参加している卒部年代：${decades.join("・")}`
+      : current === 0
+        ? "参加している卒部年代：入金確認済みの参加申込はまだありません。"
+        : "参加している卒部年代：卒部年度が登録された申込から表示します。"
+    : "参加している卒部年代は集計中です。");
   setText(root, "[data-summary-attendance-status]", isVisible
     ? `参加目標${formatNumber(target)}名まで、あと${formatNumber(remaining)}名`
     : `参加目標${formatNumber(target)}名／現在は参加申込受付中`);

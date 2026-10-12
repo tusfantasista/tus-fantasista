@@ -71,7 +71,7 @@ const checks = [
   ["donation equivalent is stored", files.pricingMigration.includes("donation_equivalent_jpy INTEGER") && files.worker.includes("donationEquivalentForTicket")],
   ["public summary excludes unpaid and cancelled records", files.worker.includes("payment_status = 'paid'") && files.worker.includes("cancelled_at IS NULL") && files.worker.includes("refunded_at IS NULL")],
   ["public summary exposes no direct identifiers", files.worker.includes("participant_count_visible") && !files.worker.includes("publicSummary.email") && !files.worker.includes("publicSummary.address")],
-  ["public count threshold is configurable", files.worker.includes("PUBLIC_PARTICIPANT_COUNT_THRESHOLD") && files.pricing.includes("participant_count_public_threshold: 20")],
+  ["public participation progress is visible from zero", !files.worker.includes("env.PUBLIC_PARTICIPANT_COUNT_THRESHOLD") && files.pricing.includes("participant_count_public_threshold: 0")],
   ["public attendance target is centralized", files.pricing.includes("participant_target_count: 120") && files.worker.includes("participant_target_count: participantTarget")],
   ["companions are not treated as supporters", files.worker.includes("companionCount += Number(row.companion_count || 0)") && files.worker.includes("if (hasPlanSupport || additionalDonationJpy > 0) supporterCount += 1")],
   ["additional donations move public progress", files.worker.includes("additional_donation_jpy") && files.worker.includes("donationEquivalentJpy += Number(row.donation_equivalent_jpy || 0) + additionalDonationJpy") && files.publicSummaryScript.includes('additional_donation: "追加寄付"')],
