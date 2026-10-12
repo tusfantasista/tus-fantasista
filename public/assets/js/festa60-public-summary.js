@@ -33,7 +33,7 @@ function renderSummaryUnavailable(root) {
 
 async function loadPublicSummary() {
   try {
-    const response = await fetch("/api/festa60/public-summary?v=20261012-1", { headers: { accept: "application/json" } });
+    const response = await fetch("/api/festa60/public-summary?v=20261012-2", { headers: { accept: "application/json" } });
     if (!response.ok) throw new Error(`summary_${response.status}`);
     const payload = await response.json();
     const summary = payload.summary || payload;
@@ -118,7 +118,7 @@ function renderAttendanceProgress(root, summary) {
     ? decades.length
       ? `参加している卒部年代：${decades.join("・")}`
       : current === 0
-        ? "参加している卒部年代：入金確認済みの参加申込はまだありません。"
+        ? "参加している卒部年代：参加申込はまだありません。"
         : "参加している卒部年代：卒部年度が登録された申込から表示します。"
     : "参加している卒部年代は集計中です。");
   setText(root, "[data-summary-attendance-status]", isVisible

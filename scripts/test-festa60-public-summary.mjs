@@ -2,15 +2,18 @@ import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import worker from "../public/_worker.js";
 
-// Model the cached response from before the 20-person gate was removed.
+// Neither the original hidden response nor the paid-only revision may be reused.
 globalThis.caches = { default: {
-  match: async (key) => key.url === "https://example.com/api/festa60/public-summary"
+  match: async (key) => [
+    "https://example.com/api/festa60/public-summary",
+    "https://example.com/api/festa60/public-summary?summary_revision=20261012-1",
+  ].includes(key.url)
     ? new Response(JSON.stringify({ ok: true, summary: { participant_count_visible: false } }))
     : null,
   async put() {},
 } };
 
-async function summaryFor(participantCount) {
+async function summaryFor(participantCount, extraApplications = []) {
   const database = new DatabaseSync(":memory:");
   database.exec(`
     CREATE TABLE applications (
@@ -34,12 +37,34 @@ async function summaryFor(participantCount) {
       index === 0 ? 2 : 0, index === 0 ? 3500 : 0, "paid", "confirmed", null, null);
   }
   insert.run("absent_donation_5000", null, 0, 5000, "paid", "confirmed", null, null);
-  // These records must never contribute, even after the visibility gate is removed.
-  insert.run("obog", 2022, 3, 70000, "unpaid", "pending", null, null);
-  insert.run("obog", 2022, 3, 70000, "paid", "cancelled", null, null);
-  insert.run("obog", 2022, 3, 70000, "paid", "confirmed", "2026-10-11", null);
-  insert.run("obog", 2022, 3, 70000, "paid", "refunded", null, null);
-  insert.run("obog", 2022, 3, 70000, "paid", "confirmed", null, "2026-10-11");
+  // Each cancellation/refund marker excludes the record independently, even if
+  // the other state fields disagree. None may add participants, support or money.
+  for (const [paymentStatus, status, cancelledAt, refundedAt] of [
+    ["cancelled", "confirmed", null, null],
+    ["refunded", "confirmed", null, null],
+    ["paid", "cancelled", null, null],
+    ["paid", "refunded", null, null],
+    ["paid", "confirmed", "2026-10-11", null],
+    ["paid", "confirmed", null, "2026-10-11"],
+    ["unpaid", "cancelled", null, null],
+    ["pending", "confirmed", "2026-10-11", null],
+    ["unpaid", "confirmed", null, "2026-10-11"],
+  ]) {
+    insert.run("obog__platinum", 2022, 3, 70000, paymentStatus, status, cancelledAt, refundedAt);
+  }
+  for (const application of extraApplications) {
+    const result = insert.run(application.ticketType || "obog__gold", 2004, 3,
+      application.donation ?? 25000, application.paymentStatus, "payment_pending", null, null);
+    if (application.additionalDonation) {
+      database.prepare("INSERT INTO payment_line_items VALUES (?, 'additional_donation', ?)")
+        .run(result.lastInsertRowid, application.additionalDonation);
+    }
+    if (application.publicName) {
+      database.prepare(`UPDATE applications SET supporter_publication_consent = 1,
+        supporter_anonymous = 0, supporter_publication_name = ? WHERE id = ?`)
+        .run(application.publicName, result.lastInsertRowid);
+    }
+  }
 
   try {
     const response = await worker.fetch(new Request("https://example.com/api/festa60/public-summary"), {
@@ -76,5 +101,33 @@ for (const count of [0, 1, 7, 19, 20]) {
     "primary_target_jpy", "primary_target_remaining_jpy", "goals", "allocation", "supporters", "last_updated_at",
   ].sort());
 }
+
+// Incomplete payment does not suppress an active application or its support.
+for (const paymentStatus of ["unpaid", "pending", "partially_funded", null]) {
+  const summary = await summaryFor(0, [{ paymentStatus, additionalDonation: 2500 }]);
+  assert.equal(summary.obog_participant_count, 1, `${paymentStatus}: active application included`);
+  assert.equal(summary.companion_count, 3);
+  assert.deepEqual(summary.participating_decades, ["2000年代"]);
+  assert.equal(summary.supporter_count, 2);
+  assert.equal(summary.plan_counts.gold, 1);
+  assert.equal(summary.plan_counts.additional_donation, 1);
+  assert.equal(summary.plan_counts.platinum, 0);
+  assert.equal(summary.donation_equivalent_jpy, 32500);
+  assert.deepEqual(summary.supporters, []);
+}
+
+const absentSummary = await summaryFor(0, [{
+  paymentStatus: "unpaid", ticketType: "absent_donation_10000", donation: 10000,
+  publicName: "公開同意済みの検証名",
+}]);
+assert.equal(absentSummary.obog_participant_count, 0);
+assert.equal(absentSummary.companion_count, 0);
+assert.deepEqual(absentSummary.participating_decades, []);
+assert.equal(absentSummary.supporter_count, 2);
+assert.equal(absentSummary.plan_counts.absent_donation_10000, 1);
+assert.equal(absentSummary.donation_equivalent_jpy, 15000);
+assert.deepEqual(absentSummary.supporters, [{
+  plan: "absent_donation_10000", display_name: "公開同意済みの検証名", message: null,
+}]);
 delete globalThis.caches;
-console.log("PASS public summary: 0/1/7/19/20 participants, legacy setting/cache, paid-only aggregation and privacy");
+console.log("PASS public summary: 0/1/7/19/20 participants, unpaid/pending support, cancellation/refund exclusion, cache and privacy");

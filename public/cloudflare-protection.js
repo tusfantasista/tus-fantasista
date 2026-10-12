@@ -123,7 +123,7 @@ export async function enforceRateLimit(request, env, bindingName, scope) {
 export function publicSummaryCacheKey(request) {
   const url = new URL(request.url);
   // Isolate the new visibility policy from cached summaries that hid small counts.
-  url.search = "summary_revision=20261012-1";
+  url.search = "summary_revision=20261012-2";
   return new Request(url.toString(), {
     method: "GET",
     headers: { accept: "application/json" },

@@ -14,6 +14,7 @@ const files = {
   design: await readFile(new URL("../docs/FESTA60_REGISTRATION_PAYMENT_DESIGN.md", import.meta.url), "utf8"),
   pricingDesign: await readFile(new URL("../docs/FESTA60_PRICING_DONATION_DESIGN.md", import.meta.url), "utf8")
 };
+const publicSummarySource = files.worker.match(/async function getPublicFundraisingSummary\(db\) \{[\s\S]*?__name\(getPublicFundraisingSummary/)?.[0] || "";
 
 function applicationInsertPlaceholderCount(worker) {
   const match = worker.match(/INSERT INTO applications \([\s\S]*?\) VALUES \(([?\s,]+)\)`/);
@@ -69,7 +70,7 @@ const checks = [
   ["legacy pricing remains available", files.pricing.includes('LEGACY_PRICING_VERSION = "festa60-2026-v1"') && files.pricing.includes("no_reception_discount_jpy: 2000")],
   ["pricing version is stored", files.pricingMigration.includes("pricing_version TEXT") && files.worker.includes("pricing_version")],
   ["donation equivalent is stored", files.pricingMigration.includes("donation_equivalent_jpy INTEGER") && files.worker.includes("donationEquivalentForTicket")],
-  ["public summary excludes unpaid and cancelled records", files.worker.includes("payment_status = 'paid'") && files.worker.includes("cancelled_at IS NULL") && files.worker.includes("refunded_at IS NULL")],
+  ["public summary includes unpaid and excludes cancelled/refunded records", publicSummarySource.includes("COALESCE(a.payment_status, 'unpaid') NOT IN ('cancelled', 'refunded')") && publicSummarySource.includes("cancelled_at IS NULL") && publicSummarySource.includes("refunded_at IS NULL") && publicSummarySource.includes("COALESCE(a.status, '') NOT IN ('cancelled', 'refunded')")],
   ["public summary exposes no direct identifiers", files.worker.includes("participant_count_visible") && !files.worker.includes("publicSummary.email") && !files.worker.includes("publicSummary.address")],
   ["public participation progress is visible from zero", !files.worker.includes("env.PUBLIC_PARTICIPANT_COUNT_THRESHOLD") && files.pricing.includes("participant_count_public_threshold: 0")],
   ["public attendance target is centralized", files.pricing.includes("participant_target_count: 120") && files.worker.includes("participant_target_count: participantTarget")],

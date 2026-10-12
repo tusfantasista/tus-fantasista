@@ -62,12 +62,12 @@ Administrators may update consent, publication name, maiden-name display, joint-
 
 `GET /api/festa60/public-summary` includes only applications that satisfy all of these conditions:
 
-- `payment_status = 'paid'`
+- payment status is neither cancelled nor refunded (unpaid and pending are included)
 - no cancellation timestamp
 - no refund timestamp
 - status is neither cancelled nor refunded
 
-Unpaid bank transfers are therefore excluded. Anonymous supporters still contribute to counts and donation totals. OBOG participant counts, companion counts, participating graduation decades, and donation progress are visible from zero. The former 20-person gate was removed on 2026-10-12; `PUBLIC_PARTICIPANT_COUNT_THRESHOLD` no longer overrides the shared zero threshold. A zero-participant state explicitly states that no paid participation applications have been received.
+Active stored applications contribute before payment, including unpaid bank transfers. Participant counts, support-plan counts, and donation-equivalent totals use the same scope. Anonymous supporters still contribute to counts and donation totals. OBOG participant counts, companion counts, participating graduation decades, and donation progress are visible from zero. The former 20-person gate was removed on 2026-10-12; `PUBLIC_PARTICIPANT_COUNT_THRESHOLD` no longer overrides the shared zero threshold. A zero-participant state explicitly states that no participation applications have been received.
 
 The endpoint is aggregate-only, with an explicit-consent supporter list as the sole exception. CDN caching is allowed for five minutes with stale-while-revalidate behavior.
 

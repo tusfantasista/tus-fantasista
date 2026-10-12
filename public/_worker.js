@@ -3977,12 +3977,12 @@ async function getPublicFundraisingSummary(db) {
         END AS public_supporter_message,
         a.updated_at
       FROM applications a
-      WHERE a.payment_status = 'paid'
+      WHERE COALESCE(a.payment_status, 'unpaid') NOT IN ('cancelled', 'refunded')
         AND a.cancelled_at IS NULL
         AND a.refunded_at IS NULL
         AND COALESCE(a.status, '') NOT IN ('cancelled', 'refunded')`
   ).all();
-  const paidRows = rows.results || [];
+  const activeRows = rows.results || [];
   const planCounts = {
     platinum: 0,
     gold: 0,
@@ -4000,7 +4000,7 @@ async function getPublicFundraisingSummary(db) {
   let lastUpdatedAt = null;
   const supporters = [];
   const participatingDecades = new Set();
-  for (const row of paidRows) {
+  for (const row of activeRows) {
     const { base_ticket_type: baseTicketType, support_tier: supportTier } = splitTicketType(row.ticket_type);
     const isAbsentDonation = ABSENT_DONATION_TICKET_TYPES.includes(baseTicketType);
     const isObogParticipant = !isAbsentDonation && publicBaseTicketType(baseTicketType).startsWith('obog');
