@@ -4,15 +4,16 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>参加費・寄付・返礼｜東京理科大学舞踏研究部 60周年記念FESTA</title>
-    <meta name="description" content="60周年記念FESTAの参加プラン、料金の内訳、寄付の目的と使途、返礼、ダンスタイムチケットをご案内します。">
+    <meta name="description" content="卒部年度・参加内容・申込時期から参加費を確認。通常参加、寄付付きプラン、同伴者料金、欠席寄付、返礼と支払い方法をご案内します。">
     <link rel="canonical" href="https://tus-fantasista-festa60.pages.dev/festa-60th/support/">
     <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;800&family=Oswald:wght@500;600;700&display=optional" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/festa60-pages.css?v=20260811-8">
     <link rel="stylesheet" href="../../assets/css/festa60-navigation.css?v=20260810-1">
     <link rel="stylesheet" href="../../assets/css/festa60-fundraising.css?v=20261012-4">
+    <link rel="stylesheet" href="../../assets/css/festa60-support.css?v=20261012-1">
   </head>
-  <body>
+  <body class="support-page">
     <header class="header"><div class="wrap header__inner">
       <a class="brand" href="../" aria-label="60周年記念FESTAトップへ戻る"><small>FANTASISTA会</small><strong>東京理科大学舞踏研究部 60周年記念FESTA</strong></a>
       <button class="menu-toggle" type="button" aria-controls="site-nav" aria-expanded="false"><span class="sr-only">メニューを開閉</span><span class="menu-toggle-line" aria-hidden="true"></span><span class="menu-toggle-line" aria-hidden="true"></span><span class="menu-toggle-line" aria-hidden="true"></span></button>
@@ -29,183 +30,113 @@
       </nav>
     </div></header>
     <main>
-      <section class="subpage-hero"><div class="wrap subpage-hero__inner"><p class="eyebrow">Fees &amp; Support</p><h1>参加費・寄付・返礼</h1><p class="subpage-hero__lead">参加者向け5プランの料金内訳、割引、ダンスタイムチケット、欠席者向け寄付と返礼をご案内します。</p></div></section>
-      <section class="festa-band"><div class="wrap">
-        <section class="support-fees-intro" aria-labelledby="support-fees-intro-title">
-          <p class="eyebrow">Fees at a Glance</p>
-          <h2 id="support-fees-intro-title">まず、参加方法と料金をご確認ください</h2>
-          <p>参加される方には、第一部FESTAと第二部懇親会を含む5つの参加プランがあります。通常参加に加え、現役支援と60周年FESTAの充実につながる寄付付きプランもお選びいただけます。</p>
-          <nav class="support-page-nav" aria-label="参加費・寄付・返礼ページ内の目次">
-            <p>このページのご案内</p>
-            <div><a href="#participant-plans">参加者向け料金</a><a href="#discounts-companions">割引・同伴者料金</a><a href="#absent-support">欠席者向け寄付</a><a href="#returns-info">返礼・住所</a><a href="#payment-methods">支払い方法</a><a href="#support-purpose-title">寄付の詳しい趣旨・目標</a></div>
-          </nav>
+      <section class="subpage-hero support-hero"><div class="wrap subpage-hero__inner">
+        <p class="eyebrow">Fees &amp; Support</p>
+        <h1>参加費・寄付</h1>
+        <p class="subpage-hero__lead">まずは、ご自身の参加費を確認。寄付付きプランも選べます。</p>
+        <div class="support-paths"><a href="#participant-plans">当日参加する <span aria-hidden="true">↓</span></a><a href="#absent-support">欠席して寄付で応援する <span aria-hidden="true">↓</span></a></div>
+        <nav class="support-quicklinks" aria-label="料金・寄付ページの目次"><a href="#companion-fees">同伴者料金</a><a href="#returns-info">返礼</a><a href="#payment-methods">お支払い</a><a href="#support-purpose-title">寄付の使い道</a></nav>
+        <p class="support-deadline">申込締切：2027年1月31日（日）</p>
+      </div></section>
+      <div class="wrap support-content">
+        <section id="participant-plans" class="support-section" aria-labelledby="support-fees-intro-title">
+          <p class="support-step">当日参加する方</p>
+          <h2 id="support-fees-intro-title">あなたの参加費を確認</h2>
+          <p>卒部年度・参加内容・申込時期を選ぶと、割引後の本人料金が分かります。</p>
+          <form class="support-calculator" data-support-calculator hidden aria-label="OBOG本人の参加費を確認">
+            <div class="support-calculator__fields">
+              <label for="support-cohort">卒部年度<select id="support-cohort" name="cohort"><option value="">卒部年度を選ぶ</option><option value="obog_5_under">2021〜2025年度</option><option value="obog_6_10">2016〜2020年度</option><option value="obog">2015年度以前</option></select></label>
+              <label for="support-reception">参加内容<select id="support-reception" name="reception"><option value="attending">FESTA＋懇親会</option><option value="without_reception">FESTAのみ（第一部のみ）</option></select></label>
+              <label for="support-period">申込時期<select id="support-period" name="period"><option value="early">2026年10月31日まで</option><option value="year_end">2026年11月1日〜12月31日</option><option value="regular">2027年1月1日〜1月31日</option></select></label>
+            </div>
+            <div class="support-calculator__result" role="status" aria-live="polite" aria-atomic="true">
+              <p class="support-calculator__label">通常参加なら</p><p class="support-calculator__total"><strong data-support-total>—</strong></p>
+              <p data-support-conditions>卒部年度を選ぶと、割引後の料金が分かります。</p><p class="support-calculator__discount" data-support-discount></p>
+            </div>
+            <p class="support-fine">本人1名の料金です。同伴者料金は別途加算します。最終的なお支払い額は申込画面でご確認ください。</p>
+            <div class="support-calculator__actions"><a class="btn btn--primary" href="../../festa60-register/">申込へ進む</a><a href="#plan-ticket-matrix">全5プランの料金を見る <span aria-hidden="true">↓</span></a></div>
+          </form>
+          <p class="note" data-support-calculator-fallback>通常参加の基準料金は15,000円です。申込時期・卒部年度の割引後の料金は、<a href="../../festa60-register/">申込画面</a>でも確認できます。</p>
+          <p class="support-fine">学習院桜友会の方は「2015年度以前」をお選びください。現役・2026年度以降の卒部予定の方は、<a href="https://tus-fantasista.pages.dev/contact/">事務局へお問い合わせ</a>ください。</p>
+          <details id="discounts-companions" class="support-disclosure">
+            <summary id="discount-guide-title">割引のしくみを確認する</summary><div class="support-disclosure__body">
+              <p><strong>すべての参加プランで、申込時期と卒部年数の割引を併用できます。</strong>下表は合計割引額です。FESTAのみなら、さらに4,000円引きになります。</p>
+              <div class="support-table-scroll" role="region" aria-label="全参加プランの合計割引額" tabindex="0"><table class="support-discount-table"><caption>基準料金から差し引く合計割引額</caption><thead><tr><th scope="col">卒部年度</th><th scope="col">2026年<br>10月31日まで</th><th scope="col">2026年<br>11月〜12月</th><th scope="col">2027年<br>1月</th></tr></thead><tbody><tr><th scope="row">2015年度以前<br><small>卒部11年目以上</small></th><td>2,000円</td><td>1,000円</td><td>0円</td></tr><tr><th scope="row">2016〜2020年度<br><small>卒部6〜10年目</small></th><td>4,000円</td><td>3,000円</td><td>2,000円</td></tr><tr><th scope="row">2021〜2025年度<br><small>卒部1〜5年目</small></th><td>6,000円</td><td>5,000円</td><td>4,000円</td></tr></tbody></table></div>
+              <p>卒部年数は2026年4月1日時点で固定します。年が変わっても区分は変わりません。学習院桜友会の方は卒部11年目以上と同じ扱いです。</p>
+              <p>例：2021〜2025年度卒部の方が10月31日までに通常参加を申し込むと、FESTA＋懇親会は9,000円、FESTAのみは5,000円です。</p>
+            </div>
+          </details>
+
+          <div class="support-section-heading"><h3 id="participant-plan-comparison-title">参加プランを選ぶ</h3><p data-support-price-heading>基準料金（FESTA＋懇親会）</p></div>
+          <p>寄付なしの「通常参加」と、寄付付きの4プラン。寄付は任意です。</p>
+          <div id="standard-inclusions" class="support-inclusions" aria-labelledby="standard-inclusions-title"><h4 id="standard-inclusions-title">参加費に含まれるもの</h4><p><strong>第一部 FESTA</strong>：デモ・トライアル・ダンスタイム・記念展示<br><strong>第二部 懇親会</strong>：2時間のビュッフェ・飲み放題</p><p class="support-fine">「FESTAのみ」を選ぶと第二部を除いた料金になります。ダンスタイムチケットはどちらの参加内容でも付きます。</p></div>
+          <div id="plan-ticket-matrix" class="support-plan-list" role="list" aria-label="料金の低い順の参加プラン">
+            <article class="support-plan support-plan--standard" role="listitem"><div class="support-plan__name"><h4>通常参加</h4><span>寄付なし</span></div><p class="support-plan__price"><strong data-support-plan-amount="standard">15,000円</strong><small data-support-plan-base="standard" hidden>基準料金 15,000円</small></p><p class="support-plan__tickets"><span>本人のチケット</span><strong data-support-standard-tickets>300円券 × 2〜3枚</strong></p><p class="support-plan__donation"><span>寄付相当額</span><strong>なし</strong></p></article>
+            <article class="support-plan support-plan--bronze" role="listitem"><div class="support-plan__name"><h4>ブロンズ</h4><span>寄付付き</span></div><p class="support-plan__price"><strong data-support-plan-amount="bronze">20,000円</strong><small data-support-plan-base="bronze" hidden>基準料金 20,000円</small></p><p class="support-plan__tickets"><span>本人のチケット</span><strong>300円券 × 5枚</strong></p><p class="support-plan__donation"><span>寄付相当額</span><strong>約3,500円</strong></p></article>
+            <article class="support-plan support-plan--silver" role="listitem"><div class="support-plan__name"><h4>シルバー</h4><span>寄付付き</span></div><p class="support-plan__price"><strong data-support-plan-amount="silver">30,000円</strong><small data-support-plan-base="silver" hidden>基準料金 30,000円</small></p><p class="support-plan__tickets"><span>本人のチケット</span><strong>400円券 × 12枚</strong></p><p class="support-plan__donation"><span>寄付相当額</span><strong>約10,200円</strong></p></article>
+            <article class="support-plan support-plan--gold" role="listitem"><div class="support-plan__name"><h4>ゴールド</h4><span>寄付付き</span></div><p class="support-plan__price"><strong data-support-plan-amount="gold">50,000円</strong><small data-support-plan-base="gold" hidden>基準料金 50,000円</small></p><p class="support-plan__tickets"><span>本人のチケット</span><strong>500円券 × 20枚</strong></p><p class="support-plan__donation"><span>寄付相当額</span><strong>約25,000円</strong></p></article>
+            <article class="support-plan support-plan--platinum" role="listitem"><div class="support-plan__name"><h4>プラチナ</h4><span>寄付付き</span></div><p class="support-plan__price"><strong data-support-plan-amount="platinum">100,000円</strong><small data-support-plan-base="platinum" hidden>基準料金 100,000円</small></p><p class="support-plan__tickets"><span>本人のチケット</span><strong>600円券 × 25枚</strong></p><p class="support-plan__donation"><span>寄付相当額</span><strong>約70,000円</strong></p></article>
+          </div>
+          <p class="support-fine">チケット欄は合計枚数です。寄付付きプランに通常参加の2〜3枚は追加されません。通常参加は卒部11年目以上が3枚、卒部10年目以下が2枚です。</p>
+          <p class="support-plan-benefits">寄付付き4プランには、開催後に<strong>集合写真・現役からのお礼・60周年記念ステッカー</strong>を郵送予定です。<a href="#returns-info">返礼・氏名掲載の詳細</a></p>
+          <details class="support-disclosure"><summary>寄付相当額・チケットについて</summary><div class="support-disclosure__body">
+            <p>寄付相当額は、各寄付付きプランの基準料金から、基準参加費15,000円とチケット券面総額を除いた部分です。割引は参加費に適用されるため、寄付相当額は変わりません。</p>
+            <p>チケットは当日配布します。現役部員とダンスタイム・トライアルで踊るときに渡すと、券面額の100％を、踊った現役本人へ還元します。</p>
+            <p>原則1曲1枚、続けて踊る場合も1曲ごとの使用を推奨します。チケットはダンスの必須条件ではありません。使用しない場合は、事前に現役部員へお伝えください。</p>
+            <p>当日の追加購入は、ご自身のプランと同じ券種が基本です。売上はすべて現役支援に充てます。</p>
+          </div></details>
+          <div class="cta-row support-apply"><a class="btn btn--primary" href="../../festa60-register/">参加を申し込む</a><a class="support-small-link" href="../program/">当日のプログラムを見る</a></div>
         </section>
 
-        <section class="support-purpose__use support-purpose-brief" aria-labelledby="support-purpose-brief-title">
-          <h2 id="support-purpose-brief-title">参加費と寄付の考え方</h2>
-          <h3>寄付をお願いする理由</h3>
-          <p>会場に集まり、現役と同じ時間を過ごすことに加えて、寄付を通じて現役の次の挑戦と60周年FESTAの充実を支える参加プランをご用意しています。</p>
-          <h3>料金と寄付のしくみ</h3>
-          <p><strong>表示するプラン料金は、基準参加費15,000円、プランごとのダンスタイムチケット券面総額、寄付相当額を組み合わせた支払総額です。</strong>寄付相当額とは、プラン料金のうち基準参加費とチケット券面総額を除いた部分を指します。</p>
-          <h3>寄付の使い道</h3>
-          <p>寄付相当額は、現役支援を中心に、60周年FESTAを記憶に残る場にするためにも活用します。</p>
-          <ol class="support-use-list">
-            <li><strong>現役の次の挑戦を支える</strong><span>最優先はフォーメーション（FM）ドレスの更新です。次にパニエ・リーダー用ベストと三面鏡の整備を同じ優先度で進め、その後、音響機器、その他の経年劣化する備品の定期的な買い換え・修繕費に充てる現役支援基金として積み立てます。</span></li>
-            <li><strong>60周年FESTAを記憶に残す</strong><span>保存できる記念パンフレット、花やテーブル装飾、60年分の写真・資料を掲示する展示パネル、大型スクリーン・映像設備などに活用します。</span></li>
-          </ol>
+        <section id="companion-fees" class="support-section" aria-labelledby="companion-fees-title">
+          <h2 id="companion-fees-title">同伴者の料金</h2><p>ご家族・ご友人は、本人と一緒に登録できます。以下の料金を別途加算します。</p>
+          <div class="support-companions"><article><h3>大人 <small>中学生以上</small></h3><dl><div><dt>FESTA＋懇親会</dt><dd>8,000円</dd></div><div><dt>FESTAのみ</dt><dd>4,000円</dd></div></dl></article><article><h3>小学生</h3><dl><div><dt>FESTA＋懇親会</dt><dd>3,000円</dd></div><div><dt>FESTAのみ</dt><dd>1,000円</dd></div></dl></article><article><h3>未就学児</h3><p class="support-companions__free">無料</p><p>参加内容にかかわらず</p></article></div>
+          <p class="support-fine">同伴者料金に割引はありません。OBOGは同伴者に含めず、お一人ずつお申し込みください。</p>
+          <details class="support-disclosure"><summary>同伴者の参加内容・チケット</summary><div class="support-disclosure__body"><p>本人がFESTAのみ参加の場合、同伴者だけ懇親会に参加することはできません。</p><p>有料の大人同伴者には、本人のプランと同じ券種のチケットを1枚配布します。小学生・未就学児への自動配布はありません。</p></div></details>
         </section>
 
-        <div id="participant-plans" class="support-block"><h2>FESTA参加者向けプラン</h2><p>すべてのプランにFESTA・懇親会の参加費が含まれます。応援したい方は、寄付を含む4つのプランからお選びいただけます。</p>
-          <section class="participant-plan-comparison" aria-labelledby="participant-plan-comparison-title">
-            <div class="section-heading-row">
-              <h3 id="participant-plan-comparison-title">5つの参加プラン</h3>
-              <p>価格の高い順</p>
-            </div>
-            <div class="participant-plan-types" aria-label="寄付の有無による参加プランの区分">
-              <p><strong>寄付付き</strong><span>プラチナ・ゴールド・シルバー・ブロンズ</span></p>
-              <p><strong>寄付なし</strong><span>通常参加</span></p>
-            </div>
-            <div class="participant-plan-rail" role="list" aria-label="参加者向けプラン一覧">
-              <article class="participant-plan-card participant-plan-card--platinum" role="listitem"><p class="participant-plan-card__name">プラチナ</p><p class="participant-plan-card__price">100,000<small>円</small></p><dl><div><dt>寄付相当額</dt><dd>約70,000円</dd></div><div><dt>ダンスタイムチケット</dt><dd>600円券 × 25枚</dd></div></dl><span class="participant-plan-card__support">寄付付き</span></article>
-              <article class="participant-plan-card participant-plan-card--gold" role="listitem"><p class="participant-plan-card__name">ゴールド</p><p class="participant-plan-card__price">50,000<small>円</small></p><dl><div><dt>寄付相当額</dt><dd>約25,000円</dd></div><div><dt>ダンスタイムチケット</dt><dd>500円券 × 20枚</dd></div></dl><span class="participant-plan-card__support">寄付付き</span></article>
-              <article class="participant-plan-card participant-plan-card--silver" role="listitem"><p class="participant-plan-card__name">シルバー</p><p class="participant-plan-card__price">30,000<small>円</small></p><dl><div><dt>寄付相当額</dt><dd>約10,200円</dd></div><div><dt>ダンスタイムチケット</dt><dd>400円券 × 12枚</dd></div></dl><span class="participant-plan-card__support">寄付付き</span></article>
-              <article class="participant-plan-card participant-plan-card--bronze" role="listitem"><p class="participant-plan-card__name">ブロンズ</p><p class="participant-plan-card__price">20,000<small>円</small></p><dl><div><dt>寄付相当額</dt><dd>約3,500円</dd></div><div><dt>ダンスタイムチケット</dt><dd>300円券 × 5枚</dd></div></dl><span class="participant-plan-card__support">寄付付き</span></article>
-              <article class="participant-plan-card participant-plan-card--standard" role="listitem"><p class="participant-plan-card__name">通常参加</p><p class="participant-plan-card__price">15,000<small>円</small></p><dl><div><dt>ダンスタイムチケット</dt><dd>卒部11年目以上：300円券 × 3枚<br>卒部10年目以下：300円券 × 2枚</dd></div></dl><span class="participant-plan-card__support">寄付なし</span></article>
-            </div>
-            <p class="note">寄付相当額は、各プランの基準料金から、基準参加費15,000円とそのプランのダンスタイムチケット券面総額を差し引いた金額です。申込時期・卒部年数による割引は、申込画面で支払予定額に反映します。</p>
-            <p class="participant-benefit-matrix__scroll-hint">横にスクロールして、各プランの内容を比較できます。</p>
-            <div id="plan-ticket-matrix" class="table-wrap participant-benefit-matrix" role="region" aria-label="各参加プランに含まれる内容の比較" tabindex="0">
-              <table class="fee-table">
-                <caption>各参加プランに含まれるもの</caption>
-                <thead><tr><th scope="col">参加プラン</th><th scope="col">第一部・第二部</th><th scope="col">寄付相当額</th><th scope="col">ダンスタイムチケット（合計）</th><th scope="col">開催後の基本返礼</th><th scope="col">サポーター表示・氏名掲載</th></tr></thead>
-                <tbody>
-                  <tr><th scope="row">プラチナ</th><td>参加費込み</td><td>約70,000円</td><td>600円券 × 25枚</td><td>集合写真・現役からのお礼・60周年記念オリジナルステッカー</td><td>プラチナ色の表示・氏名掲載<br>50字以内の応援メッセージ掲載可</td></tr>
-                  <tr><th scope="row">ゴールド</th><td>参加費込み</td><td>約25,000円</td><td>500円券 × 20枚</td><td>集合写真・現役からのお礼・60周年記念オリジナルステッカー</td><td>ゴールド色の表示・氏名掲載</td></tr>
-                  <tr><th scope="row">シルバー</th><td>参加費込み</td><td>約10,200円</td><td>400円券 × 12枚</td><td>集合写真・現役からのお礼・60周年記念オリジナルステッカー</td><td>シルバー色の表示・氏名掲載</td></tr>
-                  <tr><th scope="row">ブロンズ</th><td>参加費込み</td><td>約3,500円</td><td>300円券 × 5枚</td><td>集合写真・現役からのお礼・60周年記念オリジナルステッカー</td><td>ブロンズ色の表示・氏名掲載</td></tr>
-                  <tr><th scope="row">通常参加</th><td>参加費込み</td><td>なし</td><td>卒部11年目以上：300円券 × 3枚<br>卒部10年目以下：300円券 × 2枚</td><td>なし</td><td>なし</td></tr>
-                </tbody>
-              </table>
-            </div>
-            <p class="participant-benefit-matrix__note"><strong>チケット欄の枚数が、申込者本人への合計配布枚数です。</strong>ブロンズ以上の寄付付きプランに、通常参加の2〜3枚を追加して配布することはありません。サポーター表示と氏名掲載は希望制です。</p>
-            <p class="participant-plan-scroll-hint">横にスクロールして全プランを比較できます。</p>
-          </section>
-
-          <section class="standard-inclusions" aria-labelledby="standard-inclusions-title">
-            <h3 id="standard-inclusions-title">すべての参加プラン料金に含まれます</h3>
-            <ul>
-              <li><strong>第一部 FESTAの参加費</strong><span>記念展示、デモ、トライアル、ダンスタイム</span></li>
-              <li><strong>第二部 懇親会の参加費</strong><span>2時間のビュッフェ・飲み放題付き</span></li>
-            </ul>
-            <p class="standard-inclusions__ticket"><strong>ダンスタイムチケットも含まれます。</strong><span>通常参加は300円券2〜3枚、寄付付きプランは比較表に記載した券種・枚数が合計配布数です。通常参加分との重複配布はありません。</span></p>
-          </section>
-
-          <section id="discounts-companions" class="discount-guide" aria-labelledby="discount-guide-title">
-            <h3 id="discount-guide-title">全プラン共通の割引早見表</h3>
-            <p>申込時期と卒部年数の割引は併用できます。卒部年次は2026年4月1日時点を基準とします。</p>
-            <p class="discount-guide__reception">「第一部のみ」を選ぶ場合は、下表の割引に加えて<strong>4,000円を控除</strong>します。</p>
-            <div class="table-wrap table-wrap--compact" role="region" aria-label="申込時期と卒部年数による合計割引額" tabindex="0">
-              <table class="fee-table discount-table">
-                <thead><tr><th scope="col">卒部からの年数</th><th scope="col">10月31日まで<br><small>超早期申込</small></th><th scope="col">11月1日〜12月31日<br><small>早期申込</small></th><th scope="col">1月1日〜1月31日<br><small>通常申込</small></th></tr></thead>
-                <tbody>
-                  <tr><th scope="row">卒部11年目以上<br><small>OBOG11年目以上／2015年度以前</small></th><td><strong>2,000円引き</strong></td><td>1,000円引き</td><td>割引なし</td></tr>
-                  <tr><th scope="row">卒部6〜10年目<br><small>OBOG6〜10年目／2016〜2020年度</small></th><td><strong>4,000円引き</strong></td><td>3,000円引き</td><td>2,000円引き</td></tr>
-                  <tr><th scope="row">卒部1〜5年目<br><small>OBOG1〜5年目／2021〜2025年度</small></th><td><strong>6,000円引き</strong></td><td>5,000円引き</td><td>4,000円引き</td></tr>
-                </tbody>
-              </table>
-            </div>
-            <p class="discount-example"><strong>若手・超早期申込の例：</strong>卒部1〜5年目の方が10月31日までに申し込むと、通常参加は<strong>第一部＋第二部 9,000円</strong>、<strong>第一部のみ 5,000円</strong>です。</p>
-            <p class="discount-guide__link"><a href="../../festa60-register/">参加申込へ進む</a></p>
-          </section>
-
-          <section class="companion-fees" aria-labelledby="companion-fees-title">
-            <div class="section-heading-row">
-              <h3 id="companion-fees-title">同伴者料金</h3>
-              <p>申込者とまとめて登録</p>
-            </div>
-            <div class="companion-fees__grid">
-              <p><strong>大人</strong><small>中学生以上</small><span>第一部＋第二部 8,000円<br>第一部のみ 4,000円</span></p>
-              <p><strong>小学生</strong><span>第一部＋第二部 3,000円<br>第一部のみ 1,000円</span></p>
-              <p><strong>未就学児</strong><span>参加内容にかかわらず無料</span></p>
-            </div>
-            <p class="companion-fees__note">有料の大人同伴者には、申込者本人の参加プランと同じ金額のダンスタイムチケットを1枚配布します。OBOGは同伴者に含めず、お一人ずつお申し込みください。<strong>同伴者料金には、上記の申込時期・卒部年数による割引はありません。</strong></p>
-          </section>
-
-          <div class="participant-plan-essentials">
-            <p><strong>申込締切</strong><span>2027年1月31日（日）</span></p>
-            <p><strong>寄付プラン共通の基本返礼</strong><span>当日の集合写真、現役からのお礼、60周年記念オリジナルステッカーを開催後に郵送予定。出席者向けのプラチナ・ゴールド・シルバー・ブロンズと、欠席者向けのスタンダードは同じ内容です。</span></p>
-          </div>
-          <section class="supporter-recognition" aria-labelledby="supporter-recognition-title">
-            <div class="section-heading-row"><h3 id="supporter-recognition-title">すべての寄付プランを、当日と記録に</h3><p>掲載・表示は希望制</p></div>
-            <p>参加者向けのプラチナ・ゴールド・シルバー・ブロンズを選んだ方には、同じ大きさのサポーターバッジまたは名札用サポーター帯を用意し、色とプラン名で応援の輪を表します。</p>
-            <div class="supporter-recognition__tiers" aria-label="サポーター表示色"><span class="is-platinum">プラチナ</span><span class="is-gold">ゴールド</span><span class="is-silver">シルバー</span><span class="is-bronze">ブロンズ</span></div>
-            <p>本人の同意がある方は、公式サイトと記念パンフレットへプラン別に掲載します。プラチナは最大サイズで50字以内の応援メッセージも掲載でき、ゴールドは大、シルバーは中、ブロンズは標準サイズです。</p>
-            <p>欠席者向けは別枠で、プレミアムをゴールド相当、アドバンスをシルバー相当、スタンダードをブロンズ相当として掲載します。匿名での応援や当日表示の辞退も選べます。</p>
-            <div class="public-supporter-list" data-summary-supporter-list hidden aria-live="polite"></div>
-          </section>
-          <div class="support-detail-list">
-            <details><summary>チケットの配布と現役への還元</summary><div><p>チケットは当日会場で配布します。寄付を含むプランでは、通常参加分と重複せず、選択したプランの券種・枚数をお渡しします。</p><p>ダンスタイムやトライアルで渡されたチケットの券面相当額は、すべてそのチケットで踊った現役本人へ還元します。</p></div></details>
-            <details><summary>チケットの使い方・当日の追加購入</summary><div><p>原則として1曲につき1枚です。続けて踊る場合も1曲ごとの使用を推奨します。使用しない場合は、事前に現役部員へお伝えください。</p><p>追加購入は、ご自身の参加プランと同じ券種が基本です。売上はすべて現役支援に充てます。</p></div></details>
-            <details><summary>寄付プランの返礼について</summary><div><p>プラチナ・ゴールド・シルバー・ブロンズには、当日の集合写真、現役からのお礼、60周年記念オリジナルステッカーを開催後に郵送する予定です。返礼を目的としたプランではないため、土産品類は設けません。</p></div></details>
-          </div>
-        </div>
-        <div id="absent-support" class="support-block"><h2>欠席者向け寄付パッケージ</h2><p>当日欠席される方も現役支援と60周年記念事業にご参加いただけます。参加費と現役支援チケットは含まれません。</p><p class="support-block__discount-note"><strong>欠席者向け寄付パッケージには、申込時期・卒部年数による割引はありません。</strong></p>
-          <div class="table-wrap" role="region" aria-label="欠席者向け寄付と返礼一覧（寄付額の高い順）" tabindex="0"><table class="fee-table"><thead><tr><th>プラン</th><th>寄付額</th><th>返礼の予定</th><th>配送予定</th></tr></thead><tbody><tr><th>プレミアム</th><td>30,000円</td><td>当日の集合写真、現役からのお礼のメッセージ、60周年記念オリジナルステッカー、写真盾、記念品</td><td>宅急便コンパクト</td></tr><tr><th>アドバンス</th><td>10,000円</td><td>当日の集合写真、現役からのお礼のメッセージ、60周年記念オリジナルステッカー、写真スタンド</td><td>レターパック</td></tr><tr><th>スタンダード</th><td>5,000円</td><td>当日の集合写真、現役からのお礼のメッセージ、60周年記念オリジナルステッカー</td><td>定形郵便等</td></tr></tbody></table></div>
-        </div>
-        <p id="returns-info" class="note support-jump-target"><strong>返礼と住所について：</strong>寄付を含むプランでは住所入力が必須です。返礼を含め、開催前に郵送するものはありません。掲載内容は現時点の予定で、写真・記念品の仕様、配送方法、開催後の発送時期は制作状況により変更する場合があります。</p>
-        <p class="note"><strong>税制上の取り扱い：</strong>本ページの寄付プランについて、寄附金控除に用いる証明書は発行しません。決済サービスの領収書は、お支払いの記録としてご利用ください。</p>
-        <div id="payment-methods" class="support-block"><h2>お支払い方法</h2>
-          <h3>カード・Apple Pay・Google Pay</h3>
-          <p>Visa、Mastercard、American Express、Apple Pay、Google Payを利用できます。Apple Pay・Google Payは対応する端末・ブラウザで表示されます。JCB、Diners Club、Discoverはご利用いただけません。</p>
-          <p>申込内容と支払額を確認した後、安全な外部決済画面へ移動します。カード情報や各サービスの認証情報は外部決済サービスが取り扱い、FANTASISTAでは取得・保存しません。</p>
-          <h3>銀行振込</h3>
-          <p>内容確認画面で実際の振込先と金額を確認してから、銀行振込で申込を確定するか、カード等へ選び直せます。振込先の確認だけでは申込は確定しません。確定後に発行される振込案内に従ってお支払いください。</p>
-          <p><strong>表示する振込先は、OBOG会の通常口座ではありません。</strong>申込内容と入金を正確に照合するため、外部決済サービスが申込ごとに発行する振込専用の仮想口座（VBAN：Virtual Bank Account）です。そのため銀行名、支店名、口座名義がOBOG会と異なりますが、申込画面または振込案内に表示された口座であれば正常です。</p>
-          <p>受付番号を振込名義に付ける必要はありません。振込先は申込ごとに異なるため、ご自身の最新の振込案内に表示された口座をご利用ください。入金確認後に参加確定メールをお送りします。詳しくは<a href="../faq/#payment">お支払いのFAQ</a>をご確認ください。</p>
-        </div>
-        <section class="support-story-library" id="support-purpose-title" aria-labelledby="support-story-library-title">
-          <div class="support-story-library__heading"><p class="eyebrow">Story &amp; Goals</p><h2 id="support-story-library-title">寄付の背景と目標を詳しく知る</h2></div>
-        <details class="support-story-details">
-          <summary><strong>2017年のFMドレス調達と、2018年の挑戦</strong><span>50周年で双方が負担してつないだドレスと、52年目の史上初</span></summary>
-        <section class="support-purpose" aria-labelledby="support-story-title">
-          <p class="eyebrow">Why Your Support Matters</p>
-          <h2 id="support-story-title"><span>もう一度、集まろう。</span><span>もう一度、歴史を動かそう。</span></h2>
-          <p class="support-purpose__lead">会いたかった仲間と再会する。60年の歩みを懐かしむ。同じフロアを囲み、もう一度語り、踊る。そして、その再会から生まれる力を、現役の次の挑戦へつなげます。</p>
-
-          <div class="support-manifesto">
-            <h3>もう一度、舞研に挑戦のムーブメントを。</h3>
-            <p>50周年を迎えた2017年、FANTASISTAと現役は、新しいフォーメーションドレスの調達に挑みました。</p>
-            <p>当時の一般的な相場は約80万円。FANTASISTAが52万円、現役が積立から28万円を負担する計画でした。しかし、50周年FESTAの収益は寄付を含めても17万4,000円にとどまり、予定していた資金を用意することができませんでした。</p>
-            <p>そこで仕様を見直し、ドレス代を72万円まで抑えました。それでもFANTASISTAから42万円、現役の積立から30万円を拠出し、双方の力で、ようやく新しいドレスを現役へ届けることができました。</p>
-            <p>その翌年、2018年。現役は、そのドレスとともに、創部52年目にして理科大舞研史上初となる冬の全日本学生競技ダンス選手権大会・フォーメーション部門への出場を果たしました。現在まで、その舞台に立ったのはこの一度だけです。</p>
-            <p>もちろん、新しいドレスを用意するだけで結果が約束されるわけではありません。しかし、目標を共有し、OBOGが現役の挑戦を支え、その応援を目に見える形にすることは、もう一度前を向くきっかけになります。</p>
-            <p>あれから約10年。60周年を、過去を懐かしむだけの記念行事にはしたくありません。かつて同じフロアで踊った仲間がもう一度集まり、その力を現役へ渡す。現役がもう一度大きな目標を持ち、舞研全体に新しい熱が生まれる。そのきっかけを、このFESTAからつくります。</p>
-            <p>この60周年への加わり方は一つではありません。参加すること、仲間を誘うこと、寄付で支えること、当日、現役と踊ること。そのすべてが、次のムーブメントをつくります。</p>
-            <p class="support-manifesto__closing"><strong>50周年でつないだドレスは、52年目の史上初を見届けました。<br>60周年から、次の挑戦を。</strong></p>
-            <p class="support-manifesto__invitation">会いたかった人に会うために。そして、もう一度、舞研の歴史を動かすために。2027年2月11日、浅草で集まりましょう。</p>
-          </div>
-
+        <section id="absent-support" class="support-section" aria-labelledby="absent-support-title">
+          <p class="support-step">当日欠席する方</p><h2 id="absent-support-title">寄付だけで応援する</h2>
+          <p>3つの寄付プランから選べます。参加費・ダンスタイムチケットは含まれず、割引もありません。</p>
+          <p class="support-common-returns">全プラン共通：<strong>集合写真・現役からのお礼・60周年記念ステッカー</strong>を開催後に郵送予定。</p>
+          <div class="support-absent-plans"><article><h3>スタンダード</h3><p class="support-absent-plans__price">5,000円</p><p>共通の返礼</p></article><article><h3>アドバンス</h3><p class="support-absent-plans__price">10,000円</p><p>共通の返礼＋<strong>写真スタンド</strong></p></article><article><h3>プレミアム</h3><p class="support-absent-plans__price">30,000円</p><p>共通の返礼＋<strong>写真盾・記念品</strong></p></article></div>
+          <p class="support-fine">申込画面で「欠席して寄付のみ申し込む」を選んでください。出席申込との重複申込はできません。</p>
+          <div class="cta-row support-apply"><a class="btn btn--primary" href="../../festa60-register/">欠席・寄付のみで申し込む</a></div>
         </section>
-        </details>
 
-        <details class="support-story-details">
-          <summary><strong>寄付によって生まれる価値と、現在の進捗</strong><span>再会の一日、現役本人への直接還元、舞研の次の挑戦</span></summary>
-        <section class="support-purpose support-purpose--panel" aria-label="寄付の価値と現在の進捗">
+        <section id="returns-info" class="support-section" aria-labelledby="returns-info-title">
+          <h2 id="returns-info-title">返礼・氏名掲載</h2>
+          <div class="support-returns-summary"><h3>返礼は開催後に郵送予定</h3><p>寄付を含むプランは<strong>住所入力が必要</strong>です。開催前の郵送物はありません。通常参加には郵送の返礼はありません。</p><p class="support-fine">写真・記念品の仕様、配送方法、発送時期は制作状況により変更する場合があります。</p></div>
+          <details class="support-disclosure"><summary id="supporter-recognition-title">氏名掲載・当日のサポーター表示（希望制）</summary><div class="support-disclosure__body">
+            <p><strong>掲載に同意し、匿名を選んでいない方</strong>を、公式サイトと記念パンフレットに掲載します。匿名での応援や当日の表示辞退も選べます。</p>
+            <p>参加者の寄付付きプランには、同じ大きさのサポーターバッジまたは名札用の帯を用意します。色とプラン名で区別します。</p>
+            <ul><li>プラチナ：氏名を最大サイズで掲載。50字以内の応援メッセージも掲載可</li><li>ゴールド：氏名を大サイズで掲載</li><li>シルバー：氏名を中サイズで掲載</li><li>ブロンズ：氏名を標準サイズで掲載</li></ul>
+            <p>欠席者は別枠で掲載します。プレミアムはゴールド相当、アドバンスはシルバー相当、スタンダードはブロンズ相当です。</p>
+          </div></details>
+          <div class="public-supporter-list" data-summary-supporter-list hidden aria-live="polite"></div>
+          <details class="support-disclosure"><summary>配送方法・領収書について</summary><div class="support-disclosure__body"><p>出席者の寄付付き4プランは、共通の返礼のみです。欠席者はスタンダードを定形郵便等、アドバンスをレターパック、プレミアムを宅急便コンパクトで発送予定です。</p><p>寄附金控除に用いる証明書は発行しません。決済サービスの領収書は、お支払いの記録としてご利用ください。</p></div></details>
+        </section>
 
-          <div class="support-impact-grid" aria-label="寄付によって生まれる3つの価値">
-            <article class="support-impact-card"><span>FOR YOUR FESTA</span><h3>再会の一日が、もっと記憶に残る</h3><p>記念展示、写真や映像、プロデモ、トライアル、世代を超えた交流を充実させます。皆さまの応援が、参加するご自身にとっても心に残るFESTAをつくります。</p></article>
-            <article class="support-impact-card"><span>DIRECT SUPPORT</span><h3>応援を、現役本人へ直接届けられる</h3><p>ダンスタイムやトライアルで現役部員へ渡したチケットは、券面相当額のすべてを、そのチケットで踊った現役本人へ還元します。</p></article>
-            <article class="support-impact-card"><span>NEXT GENERATION</span><h3>舞研の次の挑戦に参加できる</h3><p>フォーメーション（FM）ドレスや活動備品などを整え、現役が活動を続け、さらに競技力を高めていくための力になります。</p></article>
-          </div>
+        <section id="payment-methods" class="support-section" aria-labelledby="payment-methods-title">
+          <h2 id="payment-methods-title">お支払い方法</h2>
+          <div class="support-payment-options"><article><h3>カード・スマホ決済</h3><p><strong>Visa・Mastercard・American Express<br>Apple Pay・Google Pay</strong></p><p class="support-fine">Apple Pay・Google Payは対応端末・ブラウザで表示されます。JCB、Diners Club、Discoverはご利用いただけません。</p></article><article><h3>銀行振込</h3><p>内容と振込先を確認し、申込を確定。<br>確定後の振込案内に従ってお支払いください。</p><p class="support-fine">振込先を見るだけでは申込は確定しません。振込手数料はご本人負担です。</p></article></div>
+          <p class="support-payment-confirm">全額の入金確認後に、参加確定メールをお送りします。</p>
+          <details class="support-disclosure"><summary>銀行振込の口座・名義について</summary><div class="support-disclosure__body"><p>振込先は、外部決済サービスが申込ごとに発行する振込専用の仮想口座（VBAN：Virtual Bank Account）です。OBOG会の通常口座ではないため、銀行名、支店名、口座名義がOBOG会と異なります。申込画面や振込案内に表示された口座であれば正常です。</p><p><strong>ご自身の最新の振込案内に記載された口座をご利用ください。</strong>受付番号を振込名義に付ける必要はありません。</p><p>内容確認画面で振込先と金額を確認してから、銀行振込で確定するか、カード等へ選び直せます。</p></div></details>
+          <details class="support-disclosure"><summary>決済の安全性・申込後の変更</summary><div class="support-disclosure__body"><p>カード等は外部決済画面でお支払いいただきます。カード情報・認証情報をFANTASISTAが取得・保存することはありません。</p><p>入金後の自己都合による返金・減額変更はできません。上位プランへの変更は、事務局から差額の支払いをご案内します。</p><p><a href="../terms/">参加申込条件</a>・<a href="../legal/">特定商取引法に基づく表記</a></p></div></details>
+          <p class="support-small-links"><a href="../faq/#payment">お支払いのFAQ</a><a href="https://tus-fantasista.pages.dev/contact/">お問い合わせ</a></p>
+        </section>
 
+        <section id="support-purpose-title" class="support-section" aria-labelledby="support-story-library-title">
+          <h2 id="support-story-library-title">寄付の使い道</h2><p>寄付相当額は、<strong>現役支援とFESTAの充実に約2：1</strong>で配分します。チケット券面額の還元とは別の支援です。</p>
+          <div class="support-use-cards"><article><h3>現役のドレス・備品</h3><p>最優先は、フォーメーション（FM）ドレスの更新。次にパニエ・リーダー用ベストと三面鏡を同じ優先度で整備します。</p><p class="support-fine">その後は、音響機器などの買い換え・修繕費に備える現役支援基金へ。</p></article><article><h3>60周年の記録・会場</h3><p>保存できる記念パンフレット、花・テーブル装飾、60年分の写真・資料の展示パネル、大型スクリーン・映像設備に活用します。</p></article></div>
           <section class="fundraising-summary movement-summary" data-festa60-public-summary aria-labelledby="fundraising-summary-title">
             <div class="fundraising-summary__heading">
-              <div><h3 id="fundraising-summary-title">現在の参加・応援状況</h3></div>
+              <div><h2 id="fundraising-summary-title">現在の参加・応援状況</h2></div>
               <p data-summary-updated>集計中</p>
             </div>
             <div class="movement-summary__grid">
               <article class="movement-summary__panel movement-summary__panel--reunion">
-                <h4>参加申込状況</h4>
+                <h3>参加申込状況</h3>
                 <div class="fundraising-summary__metrics">
                   <p><span>OBOG参加申込</span><strong data-summary-participants>集計中</strong></p>
                   <p><span>ご家族・ご友人の参加</span><strong data-summary-companions>集計中</strong></p>
@@ -217,7 +148,7 @@
                 <p class="movement-summary__status" data-summary-attendance-status>参加目標120名（同伴者を含む）／参加申込受付中</p>
               </article>
               <article class="movement-summary__panel movement-summary__panel--support">
-                <h4>寄付・支援状況</h4>
+                <h3>寄付・支援状況</h3>
                 <div class="fundraising-summary__metrics">
                   <p><span>寄付で応援した方</span><strong data-summary-supporters>0名</strong></p>
                   <p><span>寄付相当額</span><strong data-summary-donation>0円</strong></p>
@@ -231,47 +162,25 @@
               </article>
             </div>
           </section>
-
+          <details id="fundraising-goals" class="support-disclosure"><summary>寄付の段階目標・FMドレスの見積もり</summary><div class="support-disclosure__body">
+            <h3 id="fundraising-story-title">FMドレス更新を最優先に</h3><p>約10年間使ってきたドレスを更新し、現役の積立だけに負担が偏らない形で調達します。更新費は<strong>約90万〜100万円</strong>を想定しています。正式見積もり前の概算で、金額が確定した時点で目標を更新します。</p>
+            <div class="support-section-heading"><h3 id="fundraising-goals-title">段階目標</h3><p data-fundraising-final-target>最終目標</p></div><p>以下は寄付相当額の目標と配分の目安です。使い道は、上記の優先順位に沿って進めます。</p><ol class="fundraising-goals__list" data-support-goals></ol>
+            <h3 id="festa-enhancement-title">寄付で充実させる内容</h3><p>基本開催は手製印刷のパンフレットと必要最小限の展示・備品で行います。寄付が集まるほど、保存できる記念冊子、装飾、展示パネル、映像設備へ広げます。</p>
+          </div></details>
+          <details class="support-disclosure"><summary>50周年のドレスから、次の挑戦へ</summary><div class="support-disclosure__body support-history">
+            <h3 id="support-story-title">もう一度、集まろう。<br>もう一度、歴史を動かそう。</h3>
+            <p>2017年の50周年では、FANTASISTAと現役が新しいFMドレスを調達しました。当初の相場は約80万円で、FANTASISTAが52万円、現役が28万円を負担する計画でした。しかし、FESTAの収益は寄付を含め17万4,000円にとどまりました。</p>
+            <p>仕様を見直して72万円に抑え、FANTASISTAが42万円、現役が30万円を負担。双方の力でドレスを届けました。</p>
+            <p>翌2018年、現役はそのドレスとともに、創部52年目にして理科大舞研史上初の冬の全日本学生競技ダンス選手権大会・フォーメーション部門へ出場しました。現在まで、その舞台に立ったのはこの一度だけです。</p>
+            <p>新しいドレスだけで結果が約束されるわけではありません。OBOGと現役が同じ目標を持ち、挑戦を支える。その次の機会を60周年からつくります。</p>
+          </div></details>
         </section>
-        </details>
-
-        <details class="support-story-details">
-          <summary><strong>寄付目標と、応援によって実現する内容</strong><span>FMドレス更新を最優先に、一つずつ実現する段階目標</span></summary>
-        <section class="support-purpose support-purpose--panel" aria-label="寄付目標と実現する内容">
-
-          <section class="fundraising-story" aria-labelledby="fundraising-story-title">
-            <div class="section-heading-row"><h3 id="fundraising-story-title">目的は、ドレスの買い替えだけではありません</h3><p>正式見積もり前</p></div>
-            <p>約10年間使ってきたFMドレスを次の世代へ更新し、現役積立に負担が偏りすぎない形で調達することを最優先にします。現在の更新費は約90万〜100万円を想定していますが、正式見積もり前の概算です。</p>
-            <ul class="fundraising-story__purpose"><li>OBOGと現役が、世代を超えて同じ目標を共有する</li><li>現役がもう一度大きな目標へ向かうきっかけをつくる</li><li>舞研全体に新しい熱とムーブメントを生み出す</li><li>ドレス更新後に支援金の余裕があれば、部で使う備品の購入・修繕を支える基金へつなぐ</li></ul>
-            <p><strong>もう一度、大きな目標へ向かう熱を、現役とOBOGが一緒につくる時期に来ています。</strong>正式見積額が確定した時点で、FMドレス目標の位置を更新します。</p>
-          </section>
-
-          <section class="fundraising-goals" aria-labelledby="fundraising-goals-title">
-            <div class="section-heading-row"><h3 id="fundraising-goals-title">一つずつ実現する段階目標</h3><p data-fundraising-final-target>最終目標</p></div>
-            <ol class="fundraising-goals__list" data-fundraising-goals></ol>
-          </section>
-
-          <section class="festa-enhancement" aria-labelledby="festa-enhancement-title">
-            <h3 id="festa-enhancement-title">応援が増えるほど、残せるもの・共有できる体験が増えます</h3>
-            <div class="festa-enhancement__compare">
-              <article><span>基本開催</span><h4>集まりを確実に開催する</h4><p>手製印刷のパンフレットと、必要最小限の備品・展示で60周年の一日をつくります。</p></article>
-              <article><span>寄付による充実</span><h4>記憶に残り、後世に残る一日へ</h4><p>保存できる記念冊子、花・テーブル装飾、展示パネル、大型スクリーン・映像設備へ段階的に広げます。</p></article>
-            </div>
-          </section>
-
-          <div class="support-purpose__closing">
-            <h3>会いたかった人に会うために。そして、もう一度、舞研の歴史を動かすために。</h3>
-            <p>誰か一人の大きな寄付だけでなく、多くのOBOGがそれぞれの形で加わることで、FESTAはもっと活気ある場になります。2027年2月11日、浅草で集まりましょう。</p>
-            <div class="cta-row support-purpose__actions"><a class="btn btn--primary" href="#participant-plans">参加者向けプランを見る</a><a class="btn btn--ghost" href="#absent-support">欠席者向け寄付を見る</a></div>
-          </div>
-        </section>
-        </details>
-        </section>
-        <div class="cta-row"><a class="btn btn--primary" href="../../festa60-register/">参加申込へ進む</a><a class="btn btn--ghost" href="../faq/#payment">お支払いのFAQを見る</a><a class="btn btn--ghost" href="../faq/#support">寄付・返礼のFAQを見る</a></div>
-      </div></section>
+        <div class="support-bottom"><p>参加する方も、欠席して応援する方も。</p><div class="cta-row"><a class="btn btn--primary" href="../../festa60-register/">申込へ進む</a><a class="btn btn--ghost" href="../faq/#support">寄付・返礼のFAQ</a></div><p class="support-fine"><a href="https://tus-fantasista.pages.dev/contact/">ご不明な点はお問い合わせください</a></p></div>
+      </div>
     </main>
     <footer class="subpage-footer"><div class="wrap subpage-footer__inner"><a class="subpage-footer__main-link" href="https://tus-fantasista.pages.dev/">FANTASISTA会公式サイトへ</a><nav class="subpage-footer__links" aria-label="申込条件・法令・プライバシー"><a href="../terms/">FESTA参加申込条件</a><a href="../legal/">特定商取引法に基づく表記</a><a href="../privacy/">プライバシーポリシー</a><a href="https://tus-fantasista.pages.dev/terms/">サイト利用条件</a></nav><span>© All Tokyo University of Science Ballroom Dance Club OBOG Association FANTASISTA</span></div></footer>
     <script src="../../assets/js/site.js?v=20260810-2" defer></script>
+    <script type="module" src="../../assets/js/festa60-support.js?v=20261012-1"></script>
     <script type="module" src="../../assets/js/festa60-public-summary.js?v=20261012-5"></script>
   </body>
 </html>
