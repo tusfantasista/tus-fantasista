@@ -69,6 +69,8 @@ Administrators may update consent, publication name, maiden-name display, joint-
 
 Active stored applications contribute before payment, including unpaid bank transfers. Participant counts, support-plan counts, and donation-equivalent totals use the same scope. Anonymous supporters still contribute to counts and donation totals. OBOG participant counts, companion counts, participating graduation decades, and donation progress are visible from zero. The former 20-person gate was removed on 2026-10-12; `PUBLIC_PARTICIPANT_COUNT_THRESHOLD` no longer overrides the shared zero threshold. A zero-participant state explicitly states that no participation applications have been received.
 
+The participation target of 120 includes OBOG applicants and companions. Both the progress bar and the remaining target count use their combined total; the two counts are still displayed separately. Absent donors do not contribute to the attendance target.
+
 The endpoint is aggregate-only, with an explicit-consent supporter list as the sole exception. CDN caching is allowed for five minutes with stale-while-revalidate behavior.
 
 ## Migration and release order

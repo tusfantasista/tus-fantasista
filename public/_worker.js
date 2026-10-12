@@ -4039,7 +4039,7 @@ async function getPublicFundraisingSummary(db) {
     participant_count_visible: participantCountVisible,
     participant_count_threshold: participantThreshold,
     participant_target_count: participantTarget,
-    participant_target_remaining_count: participantCountVisible ? Math.max(0, participantTarget - obogParticipants) : null,
+    participant_target_remaining_count: participantCountVisible ? Math.max(0, participantTarget - obogParticipants - companionCount) : null,
     obog_participant_count: participantCountVisible ? obogParticipants : null,
     companion_count: participantCountVisible ? companionCount : null,
     participating_decades: participantCountVisible ? [...participatingDecades].sort() : [],

@@ -2,11 +2,12 @@ import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import worker from "../public/_worker.js";
 
-// Neither the original hidden response nor the paid-only revision may be reused.
+// Older summary revisions must not be reused after changing the attendance target scope.
 globalThis.caches = { default: {
   match: async (key) => [
     "https://example.com/api/festa60/public-summary",
     "https://example.com/api/festa60/public-summary?summary_revision=20261012-1",
+    "https://example.com/api/festa60/public-summary?summary_revision=20261012-2",
   ].includes(key.url)
     ? new Response(JSON.stringify({ ok: true, summary: { participant_count_visible: false } }))
     : null,
@@ -83,13 +84,13 @@ async function summaryFor(participantCount, extraApplications = []) {
   }
 }
 
-for (const count of [0, 1, 7, 19, 20]) {
+for (const count of [0, 1, 7, 19, 20, 118, 119, 120]) {
   const summary = await summaryFor(count);
   assert.equal(summary.participant_count_visible, true, `${count} participants are visible`);
   assert.equal(summary.participant_count_threshold, 0);
   assert.equal(summary.obog_participant_count, count);
   assert.equal(summary.companion_count, count > 0 ? 2 : 0);
-  assert.equal(summary.participant_target_remaining_count, 120 - count);
+  assert.equal(summary.participant_target_remaining_count, Math.max(0, 120 - count - (count > 0 ? 2 : 0)));
   assert.deepEqual(summary.participating_decades, count === 0 ? [] : count === 1 ? ["1980年代"] : ["1980年代", "2010年代"]);
   assert.equal(summary.supporter_count, count > 0 ? 2 : 1);
   assert.equal(summary.donation_equivalent_jpy, count > 0 ? 8500 : 5000);
@@ -107,6 +108,7 @@ for (const paymentStatus of ["unpaid", "pending", "partially_funded", null]) {
   const summary = await summaryFor(0, [{ paymentStatus, additionalDonation: 2500 }]);
   assert.equal(summary.obog_participant_count, 1, `${paymentStatus}: active application included`);
   assert.equal(summary.companion_count, 3);
+  assert.equal(summary.participant_target_remaining_count, 116);
   assert.deepEqual(summary.participating_decades, ["2000年代"]);
   assert.equal(summary.supporter_count, 2);
   assert.equal(summary.plan_counts.gold, 1);
@@ -122,6 +124,7 @@ const absentSummary = await summaryFor(0, [{
 }]);
 assert.equal(absentSummary.obog_participant_count, 0);
 assert.equal(absentSummary.companion_count, 0);
+assert.equal(absentSummary.participant_target_remaining_count, 120);
 assert.deepEqual(absentSummary.participating_decades, []);
 assert.equal(absentSummary.supporter_count, 2);
 assert.equal(absentSummary.plan_counts.absent_donation_10000, 1);
@@ -130,4 +133,4 @@ assert.deepEqual(absentSummary.supporters, [{
   plan: "absent_donation_10000", display_name: "公開同意済みの検証名", message: null,
 }]);
 delete globalThis.caches;
-console.log("PASS public summary: 0/1/7/19/20 participants, unpaid/pending support, cancellation/refund exclusion, cache and privacy");
+console.log("PASS public summary: OBOG + companion attendance target including 120 and overflow, unpaid/pending support, cancellation/refund exclusion, cache and privacy");

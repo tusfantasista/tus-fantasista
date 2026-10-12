@@ -22,7 +22,7 @@ function renderSummaryUnavailable(root) {
   setText(root, "[data-summary-plan-counts]", "参加・寄付の受付開始後に表示します。");
   setText(root, "[data-summary-updated]", "受付開始時期は改めてご案内します");
   setText(root, "[data-summary-decades]", "参加申込の受付開始後に、卒部年代の広がりを表示します。");
-  setText(root, "[data-summary-attendance-status]", `参加目標${formatNumber(FUNDRAISING_CONFIG.participant_target_count)}名／参加申込受付中`);
+  setText(root, "[data-summary-attendance-status]", `参加目標${formatNumber(FUNDRAISING_CONFIG.participant_target_count)}名（同伴者を含む）／参加申込受付中`);
   const attendanceBar = root.querySelector("[data-summary-attendance-progress-bar]");
   if (attendanceBar) attendanceBar.style.width = "0%";
   const supportBar = root.querySelector("[data-summary-progress-bar]");
@@ -33,7 +33,7 @@ function renderSummaryUnavailable(root) {
 
 async function loadPublicSummary() {
   try {
-    const response = await fetch("/api/festa60/public-summary?v=20261012-2", { headers: { accept: "application/json" } });
+    const response = await fetch("/api/festa60/public-summary?v=20261012-3", { headers: { accept: "application/json" } });
     if (!response.ok) throw new Error(`summary_${response.status}`);
     const payload = await response.json();
     const summary = payload.summary || payload;
@@ -103,7 +103,7 @@ function renderSummary(root, summary) {
 
 function renderAttendanceProgress(root, summary) {
   const isVisible = Boolean(summary.participant_count_visible);
-  const current = Math.max(0, Number(summary.obog_participant_count || 0));
+  const current = Math.max(0, Number(summary.obog_participant_count || 0) + Number(summary.companion_count || 0));
   const target = Math.max(1, Number(summary.participant_target_count || FUNDRAISING_CONFIG.participant_target_count));
   const remaining = Math.max(0, Number(summary.participant_target_remaining_count ?? target - current));
   const decades = Array.isArray(summary.participating_decades) ? summary.participating_decades : [];
@@ -111,6 +111,7 @@ function renderAttendanceProgress(root, summary) {
   if (bar) {
     bar.style.width = `${isVisible ? Math.min(100, current / target * 100) : 0}%`;
     const progress = bar.parentElement;
+    progress?.setAttribute("aria-label", `参加目標${formatNumber(target)}名（同伴者を含む）の進捗`);
     progress?.setAttribute("aria-valuemax", String(target));
     progress?.setAttribute("aria-valuenow", String(isVisible ? Math.min(current, target) : 0));
   }
@@ -122,8 +123,8 @@ function renderAttendanceProgress(root, summary) {
         : "参加している卒部年代：卒部年度が登録された申込から表示します。"
     : "参加している卒部年代は集計中です。");
   setText(root, "[data-summary-attendance-status]", isVisible
-    ? `参加目標${formatNumber(target)}名まで、あと${formatNumber(remaining)}名`
-    : `参加目標${formatNumber(target)}名／現在は参加申込受付中`);
+    ? `参加目標${formatNumber(target)}名（同伴者を含む）まで、あと${formatNumber(remaining)}名`
+    : `参加目標${formatNumber(target)}名（同伴者を含む）／現在は参加申込受付中`);
 }
 
 function renderMilestones(root, goals) {
