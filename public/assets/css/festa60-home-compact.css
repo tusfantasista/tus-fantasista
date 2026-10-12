@@ -1,0 +1,58 @@
+.event-focus .event-focus__program {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.event-focus__item a,
+.home-compact-links a,
+.outline-item a {
+  color: var(--gold, #ffd21c);
+  font-weight: 700;
+  text-underline-offset: 4px;
+}
+
+.event-focus__item a {
+  display: inline-block;
+  margin-top: 12px;
+}
+
+.home-compact-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  margin-top: 24px;
+}
+
+.chair-message__full {
+  margin-top: 20px;
+}
+
+.chair-message__full summary {
+  width: fit-content;
+  color: var(--gold, #ffd21c);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.chair-message__full summary:focus-visible {
+  outline: 2px solid var(--gold, #ffd21c);
+  outline-offset: 6px;
+}
+
+.chair-message__full[open] > div {
+  margin-top: 20px;
+}
+
+#program,
+#support,
+#updates,
+#anniversary,
+#photo-submit,
+#footer-cta {
+  scroll-margin-top: 24px;
+}
+
+@media (max-width: 560px) {
+  .event-focus .event-focus__program {
+    grid-template-columns: 1fr;
+  }
+}

@@ -2125,6 +2125,7 @@
     <link rel="stylesheet" href="../assets/css/photo-library.css">
     <link rel="stylesheet" href="../assets/css/festa60-film-hero.css?v=20260830-11">
     <link rel="stylesheet" href="../assets/css/festa60-keyvisual.css?v=20261012-4">
+    <link rel="stylesheet" href="../assets/css/festa60-home-compact.css?v=20261012-1">
   </head>
   <body><div class="page">
       <header class="header">
@@ -2187,7 +2188,7 @@
             <div class="keyvisual-summary">
               <p class="eyebrow"><span class="label-ja">参加申込受付中</span><span class="label-en">Save the Date</span></p>
               <p class="keyvisual-copy"><span>もう一度、集まろう。</span><span>もう一度、歴史を動かそう。</span></p>
-              <p class="keyvisual-lead">同じフロアで夢中になった同期、先輩、後輩と、あの青春の思い出をもう一度。それぞれの記憶を持ち寄り、まだ誰も見ていない60周年の一日を一緒につくる。60年で受け継いだ踊りと仲間のつながりを、世代を超えた交流から現役の次の挑戦へ手渡します。</p>
+              <p class="keyvisual-lead" id="welcome">舞踏研究部の創部60周年を祝うFESTAを、浅草で開催します。懐かしい仲間や現役生、ご家族・ご友人と、ダンスや交流をお楽しみください。今は踊っていない方も、久しぶりの方も歓迎です。</p>
               <dl class="keyvisual-details">
                 <div>
                   <dt>開催日</dt>
@@ -2206,7 +2207,7 @@
               <div class="cta-row keyvisual-cta">
                 <a class="btn btn--primary" href="../festa60-register/">参加申込へ進む</a>
                 <a class="btn btn--ghost" href="#participation-status">現在の参加・応援状況</a>
-                <a class="btn btn--ghost" href="#overview">開催概要を見る</a>
+                <a class="btn btn--ghost" href="#overview">会場・アクセス</a>
               </div>
               <nav class="hero-quick-links keyvisual-links" aria-label="主要ページへのショートカット">
                 <a href="./program/">プログラムを見る</a>
@@ -2222,12 +2223,12 @@
           <div class="wrap">
             <div class="fundraising-summary movement-summary" data-festa60-public-summary>
               <div class="fundraising-summary__heading">
-                <div><p class="eyebrow">Our Movement</p><h2 id="home-fundraising-summary-title">現在の参加・応援状況</h2></div>
+                <div><h2 id="home-fundraising-summary-title">現在の参加・応援状況</h2></div>
                 <p data-summary-updated>集計中</p>
               </div>
               <div class="movement-summary__grid">
                 <article class="movement-summary__panel movement-summary__panel--reunion">
-                  <p class="movement-summary__label">REUNION</p><h3>再会のムーブメント</h3>
+                  <h3>参加申込状況</h3>
                   <div class="fundraising-summary__metrics">
                     <p><span>OBOG参加申込</span><strong data-summary-participants>集計中</strong></p>
                     <p><span>ご家族・ご友人の参加</span><strong data-summary-companions>集計中</strong></p>
@@ -2239,7 +2240,7 @@
                   <p class="movement-summary__status" data-summary-attendance-status>参加目標120名（同伴者を含む）／参加申込受付中</p>
                 </article>
                 <article class="movement-summary__panel movement-summary__panel--support">
-                  <p class="movement-summary__label">NEXT CHALLENGE</p><h3>次の挑戦へのムーブメント</h3>
+                  <h3>寄付・支援状況</h3>
                   <div class="fundraising-summary__metrics">
                     <p><span>寄付で応援した方</span><strong data-summary-supporters>0名</strong></p>
                     <p><span>寄付相当額</span><strong data-summary-donation>0円</strong></p>
@@ -2256,11 +2257,97 @@
           </div>
         </section>
 
+        <section class="latest-news" aria-labelledby="latest-news-title">
+          <div class="wrap">
+            <div class="latest-news__head" id="updates">
+              <h2 id="latest-news-title">最新情報</h2>
+              <a href="./news/">お知らせ一覧</a>
+            </div>
+            <div class="latest-news__list">
+              <article class="latest-news__item">
+                <time datetime="2026-10-01">2026年10月1日</time>
+                <h3><a href="./news/#early-discount-extension">超早期申込割引は10月31日まで</a></h3>
+              </article>
+              <article class="latest-news__item">
+                <time datetime="2026-08-30">2026年8月30日</time>
+                <h3><a href="./news/#registration-open">参加申込の受付を開始しました</a></h3>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section id="fees-support" class="stripe-payment-section" aria-labelledby="fees-support-heading">
+          <div class="wrap">
+            <div class="section-head">
+              <h2 id="fees-support-heading">参加費・割引</h2>
+            </div>
+            <section class="home-early-entry" aria-labelledby="home-early-entry-title">
+              <div>
+                <h3 id="home-early-entry-title">2026年10月31日まで、超早期申込<strong>2,000円引き</strong></h3>
+                <p>通常参加・参加者向け寄付プランに適用し、卒部年次割引も併用できます。2021〜2025年度卒部の方は、通常参加（第一部＋第二部）が9,000円、第一部のみなら5,000円です。</p>
+              </div>
+              <a class="btn btn--primary" href="../festa60-register/">参加申込へ進む</a>
+            </section>
+            <div class="home-support-plans" aria-label="参加と寄付の選択肢">
+              <article class="home-support-plan"><h3>通常参加</h3><strong>15,000円</strong><p>第一部と、2時間のビュッフェ・飲み放題付き懇親会（予定）を含みます。第一部のみは、割引後の金額から4,000円を控除します。</p></article>
+              <article class="home-support-plan"><h3>参加者向け寄付プラン</h3><strong>20,000円〜</strong><p>参加費・ダンスタイムチケット・寄付相当分を含むプランです。</p></article>
+              <article class="home-support-plan"><h3>欠席者向け寄付</h3><strong>5,000円〜</strong><p>当日参加できない方も、現役の活動や記念事業を支援できます。</p></article>
+            </div>
+            <p class="home-support-direct">寄付はFMドレス更新を最優先に、現役の活動と60周年記念事業に活用します。</p>
+            <p class="home-support-direct">参加者向け寄付プランのダンスタイムチケットは、券面相当額を踊った現役本人へ全額還元します。</p>
+            <div class="fee-guide-actions">
+              <a class="btn btn--ghost" href="./support/">料金・割引・返礼の詳細</a>
+              <a class="btn btn--ghost" href="./support/#discounts-companions">同伴者の料金</a>
+            </div>
+            <p class="home-compact-links" id="support"><a href="./support/#support-purpose-title">寄付の使い道を見る</a><a href="https://tus-fantasista.pages.dev/contact/?type=general#contact-form">協賛・広告のご相談</a></p>
+          </div>
+        </section>
+
+        <section id="event-at-a-glance" class="event-focus" aria-labelledby="program">
+          <div class="wrap">
+            <div class="section-head">
+              <h2 id="program">当日の主な内容</h2>
+            </div>
+            <div class="event-focus__program">
+              <article class="event-focus__item"><h3>プロデモ</h3><p>若代愼・辰巳友莉亜組、寺門駿・寺門彩香組が出演します。</p><a href="./program/#demonstrators">出演者の写真・紹介</a></article>
+              <article class="event-focus__item"><h3>四年生デモ</h3><p>飯塚隆嗣・有村玲音組、矢嶋太門・下垣内咲帆組、伊藤裕貴・柳下真嬉組が出演します。</p></article>
+              <article class="event-focus__item"><h3>ダンスタイム</h3><p>現役生と一緒に踊る時間です。ダンスタイムチケットで現役の活動も応援できます。</p></article>
+              <article class="event-focus__item"><h3>トライアル</h3><p>参加者がフロアで踊る企画です。参加方法は、決まり次第お知らせします。</p></article>
+              <article class="event-focus__item"><h3>60周年記念展示</h3><p>舞踏研究部の60年を写真や資料で振り返ります。</p></article>
+              <article class="event-focus__item"><h3>懇親会</h3><p>第二部は同じ建物の9階へ。同期・先輩・後輩との交流をお楽しみください。</p></article>
+            </div>
+            <p class="event-focus__note">内容・実施順は予定です。詳しい進行は、決まり次第お知らせします。</p>
+            <div class="cta-row"><a class="btn btn--ghost" href="./program/">プログラムの詳細を見る</a></div>
+          </div>
+        </section>
+
+        <section id="overview" aria-labelledby="access-title">
+          <div class="wrap">
+            <div class="section-head"><h2 id="access-title">会場・アクセス</h2></div>
+            <div class="panel">
+              <div class="outline-grid">
+                <div class="outline-item">
+                  <span>会場</span>
+                  <strong>東京都立産業貿易センター 台東館</strong>
+                  <p>第一部：6階 展示室<br>第二部：同じ建物内・台東区民会館9階 特別会議室（特）および（大）</p>
+                  <p>〒111-0033 東京都台東区花川戸2-6-5</p>
+                </div>
+                <div class="outline-item">
+                  <span>アクセス</span>
+                  <p>東京メトロ銀座線・東武スカイツリーライン「浅草駅」徒歩5分。都営浅草線「浅草駅」徒歩8分、つくばエクスプレス「浅草駅」徒歩9分。</p>
+                  <p>一般駐車場はありません。近隣駐車場をご利用ください。</p>
+                  <p><a href="https://www.sanbo.metro.tokyo.lg.jp/taito/access/" target="_blank" rel="noopener noreferrer">台東館のアクセス案内</a></p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section id="sixty-year-film" class="film-history-section" aria-labelledby="film-history-title">
           <div class="wrap">
-            <div class="film-history-heading">
+            <div class="film-history-heading" id="anniversary">
               <h2 id="film-history-title">60年の歩みを、写真とともに。</h2>
-              <p>1966年創部の舞踏研究部は2026年に60周年を迎え、その記念FESTAを2026年度内の2027年2月11日に開催します。</p>
+              <p>1966年創部。競技会や合宿、仲間との写真で60年を振り返ります。</p>
             </div>
           <div class="festa-film-hero" data-film-hero aria-label="写真と年表でたどる舞踏研究部の60年">
             <canvas class="festa-film-science-field" data-science-field aria-hidden="true"></canvas>
@@ -2364,65 +2451,41 @@
               </dl>
             </div>
           </div>
+            <p class="home-compact-links" id="photo-submit"><a href="./chronicle/">写真をもっと見る</a><a href="https://tus-fantasista.pages.dev/contact/?type=general#contact-form">写真・資料を提供する</a></p>
           </div>
         </section>
 
-        <section class="latest-news" aria-labelledby="latest-news-title">
-          <div class="wrap">
-            <div class="latest-news__head">
-              <div><p class="eyebrow">Latest Updates</p><h2 id="latest-news-title">最新情報</h2></div>
-              <a href="./news/">60周年FESTAの更新一覧を見る</a>
+        <section id="chair-message" class="chair-message-section">
+          <div class="wrap chair-message">
+            <div class="chair-message__heading">
+              <p class="eyebrow"><span class="label-ja">会長メッセージ</span><span class="label-en">Chair Message</span></p>
+              <h2>60周年に<br>かける想い</h2>
             </div>
-            <div class="latest-news__list">
-              <article class="latest-news__item">
-                <time datetime="2026-10-01">2026年10月1日</time>
-                <h3><a href="./news/#early-discount-extension">超早期申込割引の期限を10月31日まで延長します</a></h3>
-                <p>超早期申込割引（2,000円引き）を10月31日（土）まで適用します。</p>
-              </article>
-              <article class="latest-news__item">
-                <time datetime="2026-08-30">2026年8月30日</time>
-                <h3><a href="./news/#registration-open">参加申込の受付を開始しました</a></h3>
-                <p>参加費・寄付プランと返礼内容をご確認のうえ、お申し込みください。</p>
-              </article>
-              <article class="latest-news__item">
-                <time datetime="2026-08-11">2026年8月11日</time>
-                <h3><a href="./news/#site-open">60周年記念FESTA特設サイトを公開しました</a></h3>
-                <p>開催概要、当日の予定、参加費・寄付、FAQ、クロニクルを公開しました。</p>
-              </article>
+            <div class="chair-message__body">
+              <p>長く舞研の集まりから離れていた方も、今は踊っていない方も、どうかもう一度、この部の歴史の中に集ってください。</p>
+              <details class="chair-message__full">
+                <summary>会長メッセージの全文を読む</summary>
+                <div><p>1966年、私たちの前には整った環境も伝統も実績もありませんでした。あったのは、踊りたい、うまくなりたい、仲間と前へ進みたいという思いだけでした。その熱こそが、東京理科大学舞踏研究部の最初の一歩であり、60年を越えて受け継がれてきた原点です。</p>
+              <p>60周年は、過去を懐かしむためだけの節目ではありません。それぞれの世代が持つ記憶と誇りを持ち寄り、現役の挑戦を応援し、受け継がれてきたものを次の世代へ手渡すための節目です。</p>
+              <p>長く舞研の集まりから離れていた方も、今は踊っていない方も、どうかもう一度、この部の歴史の中に集ってください。2027年2月11日、浅草で皆さまと再会できることを心から願っています。</p></div>
+              </details>
+              <p class="chair-message__signature"><small>FANTASISTA会 会長／東京理科大学舞踏研究部 創部者</small>吉澤 幸男（1968）</p>
             </div>
           </div>
         </section>
 
-        <section class="festa-band"><div class="wrap"><p class="eyebrow">Demonstration</p><h2>プロデモ・四年デモの出演者をご紹介</h2><p>若代愼・辰巳友莉亜組、寺門駿・寺門彩香組、飯塚隆嗣・有村玲音組、矢嶋太門・下垣内咲帆組、伊藤裕貴・柳下真嬉組。第一部のフロアを彩る出演者をご紹介します。</p><div class="cta-row"><a class="btn btn--primary" href="./program/#demonstrators">写真と出演者紹介を見る</a></div></div></section>
-        <section id="event-at-a-glance" class="event-focus">
+        <section id="faq" aria-labelledby="home-guide-title">
           <div class="wrap">
-            <div class="section-head">
-              <p class="eyebrow"><span class="label-ja">イベント案内</span><span class="label-en">Event Guide</span></p>
-              <h2>見る、話す、踊る。世代を超えて60周年を祝うFESTA</h2>
-              <p class="event-focus__lead">懐かしい仲間との再会だけでなく、現役生の活動を知り、舞踏研究部のこれからを一緒に応援できる一日を目指しています。最近踊っていない方も、初めてFANTASISTAの催しに参加する方も歓迎します。</p>
-            </div>
-
-            <div class="event-focus__facts" aria-label="イベント基本情報">
-              <div class="event-focus__fact"><span>DATE</span><strong>2027年2月11日<br>木曜日・祝日</strong></div>
-              <div class="event-focus__fact"><span>VENUE</span><strong>第一部：台東館 6階展示室<br>第二部：台東区民会館 9階</strong></div>
-              <div class="event-focus__fact"><span>FOR</span><strong>OBOG・現役生<br>関係者</strong></div>
-              <div class="event-focus__fact"><span>TIME</span><strong>第一部 14:00〜17:30<br>第二部 18:00〜20:00（予定）</strong></div>
-            </div>
-
-            <h3 class="event-focus__subhead">当日に予定していること</h3>
-            <div class="event-focus__program">
-              <article class="event-focus__item"><span>01 / ANNIVERSARY</span><h3>60周年記念展示</h3><p>60年の歩みを写真や資料によるギャラリー展示で振り返ります。記念ムービーの放映も検討しています。</p></article>
-              <article class="event-focus__item"><span>02 / PERFORMANCE</span><h3>現役生デモンストレーション</h3><p>現役生によるダンスを間近で楽しめるプログラムを予定しています。</p></article>
-              <article class="event-focus__item"><span>03 / PRO DEMO</span><h3>理科大OBOGプロデモ</h3><p>プロとして活躍する理科大OBOGによるデモンストレーションを予定しています。</p></article>
-              <article class="event-focus__item"><span>04 / TRIAL</span><h3>トライアル</h3><p>参加者がフロアで踊り、世代を超えてダンスを楽しめる企画を予定しています。</p></article>
-              <article class="event-focus__item"><span>05 / DANCE TIME</span><h3>現役生とのダンスタイム</h3><p>踊る方も見る方も楽しめる、現役支援につながる時間を予定しています。</p></article>
-              <article class="event-focus__item"><span>06 / RECEPTION</span><h3>第二部・懇親会</h3><p>18:00〜20:00、同じ建物内の台東区民会館9階・特別会議室（特）および（大）で、世代を超えて語り合える場をつくります。</p></article>
-            </div>
-            <p class="event-focus__note">企画内容・実施順・時間は調整中です。開催日時、会場、参加費、申込締切、プログラムの最新情報は、この特設サイトで順次お知らせします。</p>
-            <div class="cta-row">
-              <a class="btn btn--primary" href="../festa60-register/">60周年FESTAに参加申込する</a>
-              <a class="btn btn--ghost" href="#overview">会場・アクセスを見る</a>
-              <a class="btn btn--ghost" href="./support/">参加費・寄付・返礼を見る</a>
+            <div class="panel footer-cta-panel">
+              <div class="section-head">
+                <h2 id="home-guide-title">よくある質問・お問い合わせ</h2>
+                <p>申込・支払い・当日のご質問はFAQへ。その他は事務局へお問い合わせください。</p>
+              </div>
+              <div class="cta-row footer-links" id="footer-cta">
+                <a class="btn btn--primary" href="../festa60-register/">参加申込へ進む</a>
+                <a class="btn btn--ghost" href="./faq/">よくある質問</a>
+                <a class="btn btn--ghost" href="https://tus-fantasista.pages.dev/contact/">お問い合わせ</a>
+              </div>
             </div>
           </div>
         </section>
@@ -2713,276 +2776,6 @@
         </section>
 
         </details>
-
-        <section id="overview">
-          <div class="wrap">
-            <div class="section-head">
-              <p class="eyebrow"><span class="label-ja">開催概要</span><span class="label-en">Overview</span></p>
-              <h2>開催概要</h2>
-            </div>
-
-            <div class="panel">
-              <div class="outline-grid">
-                <div class="outline-item">
-                  <span>名称</span>
-                  <strong>東京理科大学舞踏研究部 60周年記念FESTA</strong>
-                </div>
-
-                <div class="outline-item">
-                  <span>日付</span>
-                  <strong>2027年2月11日（木・祝）</strong>
-                </div>
-
-                <div class="outline-item">
-                  <span>時間</span>
-                  <strong>第一部 14:00〜17:30／第二部 18:00〜20:00（予定）</strong>
-                </div>
-
-                <div class="outline-item">
-                  <span>会場</span>
-                  <strong>第一部：東京都立産業貿易センター 台東館 6階展示室</strong>
-                  <p>第二部：同じ建物内の台東区民会館 9階 特別会議室（特）および（大）</p>
-                  <p>〒111-0033 東京都台東区花川戸2-6-5</p>
-                </div>
-
-                <div class="outline-item outline-item--wide">
-                  <span>アクセス</span>
-                  <p>東京メトロ銀座線・東武スカイツリーライン「浅草駅」から徒歩5分、都営浅草線「浅草駅」から徒歩8分、つくばエクスプレス「浅草駅」から徒歩9分です。</p>
-                  <p>会場に一般駐車場はありません。お車でお越しの際は近隣駐車場をご利用ください。</p>
-                  <p style="margin-top: 12px;">
-                    <a class="btn btn--ghost" href="https://www.sanbo.metro.tokyo.lg.jp/taito/access/" target="_blank" rel="noopener noreferrer">台東館の交通アクセスを見る</a>
-                  </p>
-                </div>
-
-                <div class="outline-item outline-item--wide">
-                  <span>詳細</span>
-                  <p>参加費・寄付プランは本ページでご案内しています。受付時間や各企画の進行は、決定次第順次更新します。</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section id="fees-support" class="stripe-payment-section" aria-labelledby="fees-support-heading">
-          <div class="wrap">
-            <div class="section-head">
-              <p class="eyebrow"><span class="label-ja">参加費・寄付・返礼</span><span class="label-en">Fees &amp; Support</span></p>
-              <h2 id="fees-support-heading">もう一度、集まろう。<br>もう一度、歴史を動かそう。</h2>
-              <p>会いたかった仲間との再会から生まれる力を、現役の次の挑戦へ。参加すること、仲間を誘うこと、寄付で支えること、当日現役と踊ること。そのすべてが、次のムーブメントをつくります。</p>
-            </div>
-
-            <p class="home-participation-link"><a href="#participation-status">現在の参加・応援状況を確認する</a></p>
-
-            <div class="home-movement-story">
-              <p>2017年、FANTASISTAと現役は双方の工夫と負担でFMドレスをつなぎました。その翌年、現役は創部52年目にして初めて、冬の全日本学生競技ダンス選手権大会・フォーメーション部門の舞台に立ちました。</p>
-              <p><strong>50周年でつないだドレスは、52年目の史上初を見届けました。</strong> 60周年の再会を、現役の次の挑戦につなげます。</p>
-              <a href="./support/#support-purpose-title">60周年から始める次の挑戦を読む</a>
-            </div>
-
-            <section class="home-early-entry" aria-labelledby="home-early-entry-title">
-              <div>
-                <p class="home-early-entry__label">EARLY ENTRY / 10月31日まで</p>
-                <h3 id="home-early-entry-title">若手OBOGは、今なら通常参加<strong>9,000円</strong>から。</h3>
-                <p>2021〜2025年度卒部（OBOG1〜5年目）の方は、超早期申込2,000円と卒部年次4,000円の合計6,000円引き。通常参加は第一部＋第二部が9,000円、第一部のみなら5,000円です。参加者向け寄付プランにも、同じ割引を適用します。</p>
-              </div>
-              <a class="btn btn--primary" href="../festa60-register/">超早期申込で参加する</a>
-            </section>
-
-            <details class="home-discount-details">
-              <summary>10月31日までの超早期申込・卒部年次割引を見る</summary>
-              <dl class="home-discount-grid">
-                <div><dt>卒部1〜5年目<small>OBOG1〜5年目／2021〜2025年度</small></dt><dd>6,000円引き<small>通常参加 15,000円 → 9,000円</small></dd></div>
-                <div><dt>卒部6〜10年目<small>OBOG6〜10年目／2016〜2020年度</small></dt><dd>4,000円引き<small>通常参加 15,000円 → 11,000円</small></dd></div>
-                <div><dt>卒部11年目以上<small>OBOG11年目以上／2015年度以前</small></dt><dd>2,000円引き<small>通常参加 15,000円 → 13,000円</small></dd></div>
-              </dl>
-              <p>割引額は通常参加からプラチナまで共通です。「第一部のみ」を選ぶ場合は、割引後の金額からさらに4,000円を控除します。卒部年次は2026年4月1日時点を基準とします。</p>
-            </details>
-
-            <div class="home-support-plans" aria-label="参加と寄付の選択肢">
-              <article class="home-support-plan"><span>STANDARD ENTRY</span><h3>通常参加</h3><strong>15,000円</strong><p>第一部と、2時間のビュッフェ・飲み放題を予定する第二部懇親会を含みます。</p><small>申込時期・卒部年次による割引、懇親会不参加時の控除があります。</small></article>
-              <article class="home-support-plan"><span>ENTRY &amp; SUPPORT</span><h3>参加者向け寄付プラン</h3><strong>20,000円〜</strong><p>基準参加費、プランごとのダンスタイムチケット、寄付相当額を組み合わせた支払総額です。</p><small>ブロンズ、シルバー、ゴールド、プラチナをご用意しています。</small></article>
-              <article class="home-support-plan"><span>SUPPORT FROM AFAR</span><h3>欠席者向け寄付</h3><strong>5,000円〜</strong><p>当日参加できない方も、現役支援と60周年記念事業に加わることができます。</p><small>スタンダード、アドバンス、プレミアムをご用意しています。</small></article>
-            </div>
-
-            <p class="home-support-direct"><strong>参加者向け寄付プランのダンスタイムチケットは、券面相当額をすべて踊った現役本人へ還元します。</strong> 寄付の活用、返礼、割引、ご家族・ご友人の参加料金などの詳細は、参加費・寄付ページでご確認ください。</p>
-
-            <div class="fee-guide-actions">
-              <a class="btn btn--primary" href="../festa60-register/">参加申込へ進む</a>
-              <a class="btn btn--ghost" href="./support/">参加費・寄付の詳細を見る</a>
-              <a class="btn btn--ghost" href="./faq/#support">寄付・現役支援のFAQを見る</a>
-            </div>
-          </div>
-        </section>
-
-        <section id="program">
-          <div class="wrap">
-            <div class="section-head">
-              <p class="eyebrow"><span class="label-ja">当日のプログラム</span><span class="label-en">Program</span></p>
-              <h2>当日の主な内容</h2>
-              <p>60周年を祝い、世代を超えて交流できるプログラムを予定しています。実施順や時間は、決定次第このページでお知らせします。</p>
-            </div>
-
-            <div class="welcome-grid">
-              <article class="welcome-card"><p>写真・資料による60周年記念展示と映像企画</p></article>
-              <article class="welcome-card"><p>現役生によるデモンストレーション</p></article>
-              <article class="welcome-card"><p>理科大OBOGプロによるデモンストレーション</p></article>
-              <article class="welcome-card"><p>参加者によるトライアル</p></article>
-              <article class="welcome-card"><p>世代別テーブル交流・近況共有</p></article>
-              <article class="welcome-card"><p>写真・資料展示コーナー</p></article>
-              <article class="welcome-card"><p>現役支援・活動紹介の時間</p></article>
-              <article class="welcome-card"><p>記念撮影・エンディング</p></article>
-            </div>
-          </div>
-        </section>
-
-        <section id="support">
-          <div class="wrap">
-            <div class="panel festa-callout photo-contribute-panel">
-              <div class="festa-callout__copy">
-                <div class="section-head" style="margin-bottom: 0;">
-                  <p class="eyebrow"><span class="label-ja">協賛・寄付・支援</span><span class="label-en">Support</span></p>
-                  <h2>60周年記念事業への支援について</h2>
-                </div>
-                <p>個人寄付は、参加者向けのプラチナ・ゴールド・シルバー・ブロンズと、欠席者向けのスタンダード・アドバンス・プレミアムをご用意しています。企業協賛、広告、物品協力は事務局へご相談ください。</p>
-                <div class="festa-callout__actions">
-                  <a class="btn btn--primary" href="https://tus-fantasista.pages.dev/contact/?type=general#contact-form">協賛・広告について相談する</a>
-                  <a class="btn btn--ghost" href="./support/">寄付と返礼の一覧を見る</a>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section id="faq">
-          <div class="wrap">
-            <div class="section-head">
-              <p class="eyebrow"><span class="label-ja">よくある質問</span><span class="label-en">FAQ</span></p>
-              <h2>知りたい内容から探す</h2>
-              <p>質問を4つのカテゴリに整理しました。詳しい回答はFAQページで確認できます。</p>
-            </div>
-
-            <div class="story-grid">
-              <article class="story-card"><h3>参加・申込</h3><p>参加対象、同伴者、申込後の変更など。</p><a class="btn btn--ghost" href="./faq/#entry">参加・申込のFAQを見る</a></article>
-              <article class="story-card"><h3>当日の過ごし方</h3><p>服装、ダンスタイム、トライアルなど。</p><a class="btn btn--ghost" href="./faq/#day">当日のFAQを見る</a></article>
-              <article class="story-card"><h3>参加費・支払い</h3><p>参加プランの料金内訳、割引と各種支払い方法。</p><a class="btn btn--ghost" href="./faq/#payment">支払いのFAQを見る</a></article>
-              <article class="story-card"><h3>寄付・返礼・協賛</h3><p>寄付プラン、返礼、写真提供、協賛相談など。</p><a class="btn btn--ghost" href="./faq/#support">支援のFAQを見る</a></article>
-            </div>
-            <div class="cta-row"><a class="btn btn--primary" href="./faq/">FAQをすべて見る</a></div>
-          </div>
-        </section>
-
-        <section id="anniversary">
-          <div class="wrap">
-            <div class="section-head">
-              <p class="eyebrow"><span class="label-ja">記念FESTAについて</span><span class="label-en">Anniversary</span></p>
-              <h2>60年の歩みを、懐かしい仲間とともに</h2>
-            </div>
-
-            <div class="story-grid">
-              <div class="story-card">
-                <p>60周年記念FESTAは、ただ過去を懐かしむだけの場ではありません。</p>
-                <p><strong>背番号をつけてフロアに立った日。</strong><br>練習場で同じ曲を何度もかけた日。結果に喜び、悔しさを飲み込み、それでも次の一曲へ向かった日。</p>
-                <p>それぞれの時代に、それぞれの舞研がありました。このFESTAは、その記憶を持ち寄り、世代を超えて語り合うための一日です。</p>
-                <p>同期、先輩、後輩、現役生、関係者の皆さまが集い、東京理科大学舞踏研究部の60年を祝う場として開催いたします。</p>
-              </div>
-
-                            <div class="story-mark">
-                <strong>ANNIVERSARY MESSAGE</strong>
-                <p>華やかなフロアの奥にあった時間も、夏合宿の踊り込みも、あと一チェックの悔しさも。今なら笑って語り合える。そんな再会のきっかけになる一日を目指します。</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section id="chair-message" class="chair-message-section">
-          <div class="wrap chair-message">
-            <div class="chair-message__heading">
-              <p class="eyebrow"><span class="label-ja">会長メッセージ</span><span class="label-en">Chair Message</span></p>
-              <h2>60周年に<br>かける想い</h2>
-            </div>
-            <div class="chair-message__body">
-              <p>1966年、私たちの前には整った環境も伝統も実績もありませんでした。あったのは、踊りたい、うまくなりたい、仲間と前へ進みたいという思いだけでした。その熱こそが、東京理科大学舞踏研究部の最初の一歩であり、60年を越えて受け継がれてきた原点です。</p>
-              <p>60周年は、過去を懐かしむためだけの節目ではありません。それぞれの世代が持つ記憶と誇りを持ち寄り、現役の挑戦を応援し、受け継がれてきたものを次の世代へ手渡すための節目です。</p>
-              <p>長く舞研の集まりから離れていた方も、今は踊っていない方も、どうかもう一度、この部の歴史の中に集ってください。2027年2月11日、浅草で皆さまと再会できることを心から願っています。</p>
-              <p class="chair-message__signature"><small>FANTASISTA会 会長／東京理科大学舞踏研究部 創部者</small>吉澤 幸男（1968）</p>
-            </div>
-          </div>
-        </section>
-
-        <section id="welcome">
-          <div class="wrap">
-            <div class="section-head">
-              <p class="eyebrow"><span class="label-ja">Welcome</span><span class="label-en">Invitation</span></p>
-              <h2>OBOGも、ご家族・ご友人も</h2>
-              <p>卒部から時間が経っていても、今は踊っていなくても大丈夫です。大切な方と一緒に、理科大舞研の60周年を祝い、これからを応援する一日を目指しています。</p>
-            </div>
-
-                                    <div class="welcome-grid">
-              <article class="welcome-card"><p>東京理科大学舞踏研究部で活動した、すべてのOBOG</p></article>
-              <article class="welcome-card"><p>同期、先輩、後輩との再会を楽しみたい方</p></article>
-              <article class="welcome-card"><p>現役生の今を知り、これからの活動を応援したい方</p></article>
-              <article class="welcome-card"><p>OBOGのご家族・ご友人として、一緒に60周年を盛り上げたい方</p></article>
-            </div>
-
-            <p class="welcome-note">踊る・踊らない、競技成績、現在のつながりは問いません。久しぶりのOBOGも、ご家族・ご友人も、皆さまで気軽にご参加ください。</p>
-          </div>
-        </section>
-
-        <section id="photo-submit">
-          <div class="wrap">
-            <div class="panel festa-callout">
-              <div class="festa-callout__copy">
-                <div class="section-head" style="margin-bottom: 0;">
-                  <p class="eyebrow"><span class="label-ja">Photo Archive</span><span class="label-en">Contribute</span></p>
-                  <h2>写真・記録をお持ちのOBOGへ</h2>
-                </div>
-                <p>60周年記念FESTAに向けて、競技会、練習風景、フォーメーション、集合写真などを掲載・展示できるよう準備しています。</p>
-                <p>60年のクロニクルに収めた写真を、年代を越えて紹介しています。ほかにも写真や資料をお持ちの方は、FANTASISTA会までお知らせください。</p>
-
-                <div class="festa-callout__actions">
-                  <a class="btn btn--ghost" href="./chronicle/">60年のクロニクルを見る</a>
-                  <a class="btn btn--primary" href="https://tus-fantasista.pages.dev/contact/?type=general#contact-form">写真・資料を提供する</a>
-                </div>
-              </div>
-
-              <div data-photo-library data-layout="flow" data-role="gallery" data-random-count="18" data-source="../assets/data/public-photo-library.json?v=20260809-2" aria-live="polite"></div>
-              <p class="photo-library-status photo-flow-status" data-photo-library-status role="status">クロニクルから写真を選んでいます。</p>
-            </div>
-          </div>
-        </section>
-
-        <section id="updates">
-          <div class="wrap">
-            <div class="section-head">
-              <p class="eyebrow"><span class="label-ja">今後の更新予定</span><span class="label-en">Coming Updates</span></p>
-              <h2>今後お知らせする内容</h2>
-            </div>
-
-            <div class="panel festa-updates">
-              <p>受付時間、服装、トライアルの参加方法、出演者、当日の詳しい進行は、決定次第「最新情報」と各案内ページで順次お知らせします。</p>
-              <p>当日は、60年の歩みを振り返る時間、世代を超えて語り合う時間、懐かしい仲間と再会する時間を準備していく予定です。</p>
-              <p>久しぶりの方も、現役に近い世代の方も、どうぞ続報をお待ちください。</p>
-              <p>協賛をご検討いただける企業・関係者の皆さまには、歴史ある学生舞踏文化と、世代を超えたFANTASISTAのつながりに寄り添う記念事業として、改めてご案内いたします。</p>
-            </div>
-          </div>
-        </section>
-
-        <section id="footer-cta">
-          <div class="wrap">
-            <div class="panel footer-cta-panel">
-              <div class="section-head" style="margin-bottom: 0;">
-                <p class="eyebrow"><span class="label-ja">Next</span><span class="label-en">Links</span></p>
-                <h2>参加申込とご案内</h2>
-                <p>参加申込の前に、参加費・寄付とよくある質問をご確認ください。</p>
-              </div>
-
-              <div class="cta-row footer-links">
-                <a class="btn btn--primary" href="../festa60-register/">参加申込へ進む</a>
-                <a class="btn btn--ghost" href="./faq/">よくある質問を見る</a>
-              </div>
-            </div>
-          </div>
-        </section>
       </main>
 
       <footer>
