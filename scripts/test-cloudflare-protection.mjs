@@ -58,7 +58,7 @@ assert.equal(locallyBlocked.status, 429);
 
 const cacheKey = publicSummaryCacheKey(request);
 assert.equal(cacheKey.method, "GET");
-assert.equal(cacheKey.url, "https://example.com/api/festa60/public-summary?summary_revision=20261012-3");
+assert.equal(cacheKey.url, "https://example.com/api/festa60/public-summary?summary_revision=20261012-4");
 assert.equal(publicSummaryCacheKey(new Request("https://example.com/api/festa60/public-summary?other=2")).url, cacheKey.url);
 
 console.log("Cloudflare protection tests passed.");

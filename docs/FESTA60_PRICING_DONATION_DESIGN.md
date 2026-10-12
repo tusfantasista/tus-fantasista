@@ -71,6 +71,8 @@ Active stored applications contribute before payment, including unpaid bank tran
 
 The participation target of 120 includes OBOG applicants and companions. Both the progress bar and the remaining target count use their combined total; the two counts are still displayed separately. Absent donors do not contribute to the attendance target.
 
+The public summary also returns `participating_decade_counts` as chronologically sorted `{ decade, count }` aggregates for OBOG applicants with a known graduation year. Companions and absent donors do not contribute to these counts. The homepage places the summary immediately after the main visual and links to it from the main CTA and the Guide menu. Decade labels grow in font size with their relative participant count, with an explicit numeric count beside every label.
+
 The endpoint is aggregate-only, with an explicit-consent supporter list as the sole exception. CDN caching is allowed for five minutes with stale-while-revalidate behavior.
 
 ## Migration and release order

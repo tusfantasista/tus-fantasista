@@ -3999,7 +3999,7 @@ async function getPublicFundraisingSummary(db) {
   let donationEquivalentJpy = 0;
   let lastUpdatedAt = null;
   const supporters = [];
-  const participatingDecades = new Set();
+  const participatingDecadeCounts = new Map();
   for (const row of activeRows) {
     const { base_ticket_type: baseTicketType, support_tier: supportTier } = splitTicketType(row.ticket_type);
     const isAbsentDonation = ABSENT_DONATION_TICKET_TYPES.includes(baseTicketType);
@@ -4010,7 +4010,8 @@ async function getPublicFundraisingSummary(db) {
       companionCount += Number(row.companion_count || 0);
       const graduationYear = Number(row.graduation_year || 0);
       if (Number.isInteger(graduationYear) && graduationYear >= 1900) {
-        participatingDecades.add(`${Math.floor(graduationYear / 10) * 10}年代`);
+        const decade = `${Math.floor(graduationYear / 10) * 10}年代`;
+        participatingDecadeCounts.set(decade, (participatingDecadeCounts.get(decade) || 0) + 1);
       }
     }
     const additionalDonationJpy = Number(row.additional_donation_jpy || 0);
@@ -4035,6 +4036,9 @@ async function getPublicFundraisingSummary(db) {
   const primaryTarget = FUNDRAISING_CONFIG.primary_target_jpy;
   const participantTarget = FUNDRAISING_CONFIG.participant_target_count;
   const participantCountVisible = obogParticipants >= participantThreshold;
+  const decadeCounts = [...participatingDecadeCounts]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([decade, count]) => ({ decade, count }));
   return {
     participant_count_visible: participantCountVisible,
     participant_count_threshold: participantThreshold,
@@ -4042,7 +4046,8 @@ async function getPublicFundraisingSummary(db) {
     participant_target_remaining_count: participantCountVisible ? Math.max(0, participantTarget - obogParticipants - companionCount) : null,
     obog_participant_count: participantCountVisible ? obogParticipants : null,
     companion_count: participantCountVisible ? companionCount : null,
-    participating_decades: participantCountVisible ? [...participatingDecades].sort() : [],
+    participating_decades: participantCountVisible ? decadeCounts.map(({ decade }) => decade) : [],
+    participating_decade_counts: participantCountVisible ? decadeCounts : [],
     supporter_count: supporterCount,
     plan_counts: planCounts,
     donation_equivalent_jpy: donationEquivalentJpy,

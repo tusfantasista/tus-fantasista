@@ -2,12 +2,13 @@ import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import worker from "../public/_worker.js";
 
-// Older summary revisions must not be reused after changing the attendance target scope.
+// Older summaries without decade counts must not be reused for the new display.
 globalThis.caches = { default: {
   match: async (key) => [
     "https://example.com/api/festa60/public-summary",
     "https://example.com/api/festa60/public-summary?summary_revision=20261012-1",
     "https://example.com/api/festa60/public-summary?summary_revision=20261012-2",
+    "https://example.com/api/festa60/public-summary?summary_revision=20261012-3",
   ].includes(key.url)
     ? new Response(JSON.stringify({ ok: true, summary: { participant_count_visible: false } }))
     : null,
@@ -54,7 +55,8 @@ async function summaryFor(participantCount, extraApplications = []) {
     insert.run("obog__platinum", 2022, 3, 70000, paymentStatus, status, cancelledAt, refundedAt);
   }
   for (const application of extraApplications) {
-    const result = insert.run(application.ticketType || "obog__gold", 2004, 3,
+    const result = insert.run(application.ticketType || "obog__gold",
+      Object.hasOwn(application, "graduationYear") ? application.graduationYear : 2004, 3,
       application.donation ?? 25000, application.paymentStatus, "payment_pending", null, null);
     if (application.additionalDonation) {
       database.prepare("INSERT INTO payment_line_items VALUES (?, 'additional_donation', ?)")
@@ -92,13 +94,17 @@ for (const count of [0, 1, 7, 19, 20, 118, 119, 120]) {
   assert.equal(summary.companion_count, count > 0 ? 2 : 0);
   assert.equal(summary.participant_target_remaining_count, Math.max(0, 120 - count - (count > 0 ? 2 : 0)));
   assert.deepEqual(summary.participating_decades, count === 0 ? [] : count === 1 ? ["1980年代"] : ["1980年代", "2010年代"]);
+  assert.deepEqual(summary.participating_decade_counts, count === 0 ? [] : [
+    { decade: "1980年代", count: 1 },
+    ...(count > 1 ? [{ decade: "2010年代", count: count - 1 }] : []),
+  ]);
   assert.equal(summary.supporter_count, count > 0 ? 2 : 1);
   assert.equal(summary.donation_equivalent_jpy, count > 0 ? 8500 : 5000);
   assert.deepEqual(summary.supporters, []);
   assert.deepEqual(Object.keys(summary).sort(), [
     "participant_count_visible", "participant_count_threshold", "participant_target_count",
     "participant_target_remaining_count", "obog_participant_count", "companion_count",
-    "participating_decades", "supporter_count", "plan_counts", "donation_equivalent_jpy",
+    "participating_decades", "participating_decade_counts", "supporter_count", "plan_counts", "donation_equivalent_jpy",
     "primary_target_jpy", "primary_target_remaining_jpy", "goals", "allocation", "supporters", "last_updated_at",
   ].sort());
 }
@@ -110,6 +116,7 @@ for (const paymentStatus of ["unpaid", "pending", "partially_funded", null]) {
   assert.equal(summary.companion_count, 3);
   assert.equal(summary.participant_target_remaining_count, 116);
   assert.deepEqual(summary.participating_decades, ["2000年代"]);
+  assert.deepEqual(summary.participating_decade_counts, [{ decade: "2000年代", count: 1 }]);
   assert.equal(summary.supporter_count, 2);
   assert.equal(summary.plan_counts.gold, 1);
   assert.equal(summary.plan_counts.additional_donation, 1);
@@ -126,11 +133,30 @@ assert.equal(absentSummary.obog_participant_count, 0);
 assert.equal(absentSummary.companion_count, 0);
 assert.equal(absentSummary.participant_target_remaining_count, 120);
 assert.deepEqual(absentSummary.participating_decades, []);
+assert.deepEqual(absentSummary.participating_decade_counts, []);
 assert.equal(absentSummary.supporter_count, 2);
 assert.equal(absentSummary.plan_counts.absent_donation_10000, 1);
 assert.equal(absentSummary.donation_equivalent_jpy, 15000);
 assert.deepEqual(absentSummary.supporters, [{
   plan: "absent_donation_10000", display_name: "公開同意済みの検証名", message: null,
 }]);
+
+// Count each OBOG once in their graduation decade. Companions and absent donors
+// do not add to decade counts; unknown graduation years still count for attendance.
+const decadeSummary = await summaryFor(3, [
+  { paymentStatus: "unpaid", graduationYear: 1969 },
+  { paymentStatus: "pending", graduationYear: 2019 },
+  { paymentStatus: "unpaid", graduationYear: null },
+  { paymentStatus: "unpaid", graduationYear: 1899 },
+  { paymentStatus: "unpaid", ticketType: "absent_donation_10000", graduationYear: 1972 },
+]);
+assert.equal(decadeSummary.obog_participant_count, 7);
+assert.equal(decadeSummary.companion_count, 14);
+assert.equal(decadeSummary.participant_target_remaining_count, 99);
+assert.deepEqual(decadeSummary.participating_decade_counts, [
+  { decade: "1960年代", count: 1 },
+  { decade: "1980年代", count: 1 },
+  { decade: "2010年代", count: 3 },
+]);
 delete globalThis.caches;
-console.log("PASS public summary: OBOG + companion attendance target including 120 and overflow, unpaid/pending support, cancellation/refund exclusion, cache and privacy");
+console.log("PASS public summary: graduation decade counts, OBOG + companion attendance target including 120 and overflow, unpaid/pending support, cancellation/refund exclusion, cache and privacy");

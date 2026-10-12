@@ -33,7 +33,7 @@ function renderSummaryUnavailable(root) {
 
 async function loadPublicSummary() {
   try {
-    const response = await fetch("/api/festa60/public-summary?v=20261012-3", { headers: { accept: "application/json" } });
+    const response = await fetch("/api/festa60/public-summary?v=20261012-4", { headers: { accept: "application/json" } });
     if (!response.ok) throw new Error(`summary_${response.status}`);
     const payload = await response.json();
     const summary = payload.summary || payload;
@@ -106,7 +106,6 @@ function renderAttendanceProgress(root, summary) {
   const current = Math.max(0, Number(summary.obog_participant_count || 0) + Number(summary.companion_count || 0));
   const target = Math.max(1, Number(summary.participant_target_count || FUNDRAISING_CONFIG.participant_target_count));
   const remaining = Math.max(0, Number(summary.participant_target_remaining_count ?? target - current));
-  const decades = Array.isArray(summary.participating_decades) ? summary.participating_decades : [];
   const bar = root.querySelector("[data-summary-attendance-progress-bar]");
   if (bar) {
     bar.style.width = `${isVisible ? Math.min(100, current / target * 100) : 0}%`;
@@ -115,16 +114,39 @@ function renderAttendanceProgress(root, summary) {
     progress?.setAttribute("aria-valuemax", String(target));
     progress?.setAttribute("aria-valuenow", String(isVisible ? Math.min(current, target) : 0));
   }
-  setText(root, "[data-summary-decades]", isVisible
-    ? decades.length
-      ? `参加している卒部年代：${decades.join("・")}`
-      : current === 0
-        ? "参加している卒部年代：参加申込はまだありません。"
-        : "参加している卒部年代：卒部年度が登録された申込から表示します。"
-    : "参加している卒部年代は集計中です。");
+  renderParticipatingDecades(root, summary, isVisible, current);
   setText(root, "[data-summary-attendance-status]", isVisible
     ? `参加目標${formatNumber(target)}名（同伴者を含む）まで、あと${formatNumber(remaining)}名`
     : `参加目標${formatNumber(target)}名（同伴者を含む）／現在は参加申込受付中`);
+}
+
+function renderParticipatingDecades(root, summary, isVisible, current) {
+  const list = root.querySelector("[data-summary-decade-counts]");
+  const note = root.querySelector("[data-summary-decade-note]");
+  const decadeCounts = isVisible && Array.isArray(summary.participating_decade_counts)
+    ? summary.participating_decade_counts
+      .filter(({ decade, count }) => /^\d{4}年代$/.test(decade) && Number.isInteger(count) && count > 0)
+      .sort((left, right) => left.decade.localeCompare(right.decade))
+    : [];
+  if (list) {
+    const largestCount = Math.max(1, ...decadeCounts.map(({ count }) => count));
+    list.innerHTML = decadeCounts.map(({ decade, count }) => {
+      const fontSize = 1.05 + .75 * (count - 1) / Math.max(1, largestCount - 1);
+      return `<li><strong style="font-size:${fontSize.toFixed(3)}rem">${escapeHtml(decade)}</strong><span>${formatNumber(count)}名</span></li>`;
+    }).join("");
+    list.hidden = !decadeCounts.length;
+  }
+  if (note) note.hidden = !decadeCounts.length;
+  const decades = Array.isArray(summary.participating_decades) ? summary.participating_decades : [];
+  setText(root, "[data-summary-decades]", !isVisible
+    ? "参加している卒部年代は集計中です。"
+    : decadeCounts.length && list
+      ? "参加している卒部年代"
+      : decades.length
+        ? `参加している卒部年代：${decades.join("・")}`
+        : current === 0
+          ? "参加している卒部年代：参加申込はまだありません。"
+          : "参加している卒部年代：卒部年度が登録された申込から表示します。");
 }
 
 function renderMilestones(root, goals) {

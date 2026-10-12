@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;800&family=Oswald:wght@500;600;700&display=optional" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/festa60-pages.css?v=20260811-8">
     <link rel="stylesheet" href="../../assets/css/festa60-navigation.css?v=20260810-1">
-    <link rel="stylesheet" href="../../assets/css/festa60-fundraising.css?v=20260810-2">
+    <link rel="stylesheet" href="../../assets/css/festa60-fundraising.css?v=20261012-4">
   </head>
   <body>
     <header class="header"><div class="wrap header__inner">
@@ -23,7 +23,7 @@
         <a href="../chronicle/"><span class="nav-copy"><span class="nav-ja">クロニクル</span><span class="nav-en">Chronicle</span></span></a>
         <details class="nav-guide" data-festa-guide>
           <summary aria-controls="site-nav-guide" aria-expanded="false"><span class="nav-copy"><span class="nav-ja">ご案内</span><span class="nav-en">Guide</span></span><span class="nav-guide__chevron" aria-hidden="true"></span></summary>
-          <div id="site-nav-guide" class="nav-guide__menu"><a href="../news/">最新情報</a><a href="../faq/">FAQ</a><a href="https://tus-fantasista.pages.dev/contact/">お問い合わせ</a></div>
+          <div id="site-nav-guide" class="nav-guide__menu"><a href="../news/">最新情報</a><a href="../faq/">FAQ</a><a href="../#participation-status">現在の参加・応援状況</a><a href="https://tus-fantasista.pages.dev/contact/">お問い合わせ</a></div>
         </details>
         <a class="nav-register" href="../../festa60-register/"><span class="nav-copy"><span class="nav-ja">参加申込</span><span class="nav-en">Register</span></span></a>
       </nav>
@@ -210,7 +210,9 @@
                   <p><span>OBOG参加申込</span><strong data-summary-participants>集計中</strong></p>
                   <p><span>ご家族・ご友人の参加</span><strong data-summary-companions>集計中</strong></p>
                 </div>
-                <p class="movement-summary__decades" data-summary-decades>参加している卒部年代を集計しています。</p>
+                <p class="movement-summary__decades" data-summary-decades>参加している卒部年代</p>
+                <ul class="movement-summary__decade-list" data-summary-decade-counts aria-label="卒部年代別のOBOG参加申込人数" hidden></ul>
+                <p class="movement-summary__decade-note" data-summary-decade-note hidden>人数が多い年代ほど大きく表示しています。</p>
                 <div class="attendance-progress" role="progressbar" aria-label="参加目標120名（同伴者を含む）の進捗" aria-valuemin="0" aria-valuemax="120" aria-valuenow="0"><span data-summary-attendance-progress-bar></span></div>
                 <p class="movement-summary__status" data-summary-attendance-status>参加目標120名（同伴者を含む）／参加申込受付中</p>
               </article>
@@ -270,6 +272,6 @@
     </main>
     <footer class="subpage-footer"><div class="wrap subpage-footer__inner"><a class="subpage-footer__main-link" href="https://tus-fantasista.pages.dev/">FANTASISTA会公式サイトへ</a><nav class="subpage-footer__links" aria-label="申込条件・法令・プライバシー"><a href="../terms/">FESTA参加申込条件</a><a href="../legal/">特定商取引法に基づく表記</a><a href="../privacy/">プライバシーポリシー</a><a href="https://tus-fantasista.pages.dev/terms/">サイト利用条件</a></nav><span>© All Tokyo University of Science Ballroom Dance Club OBOG Association FANTASISTA</span></div></footer>
     <script src="../../assets/js/site.js?v=20260810-2" defer></script>
-    <script type="module" src="../../assets/js/festa60-public-summary.js?v=20261012-3"></script>
+    <script type="module" src="../../assets/js/festa60-public-summary.js?v=20261012-4"></script>
   </body>
 </html>
