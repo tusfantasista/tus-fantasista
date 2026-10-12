@@ -25,6 +25,7 @@ cp "$root_dir/production/festa60-root.html" "$output_dir/index.html"
 cp "$root_dir/production/404.html" "$output_dir/404.html"
 cp "$root_dir/production/robots.txt" "$output_dir/robots.txt"
 cp "$root_dir/production/sitemap.xml" "$output_dir/sitemap.xml"
+cp "$root_dir/production/google710a6c95640111d9.html" "$output_dir/google710a6c95640111d9.html"
 
 # Remove internal review-phase markers from the standalone production artifact.
 find "$output_dir" -type f \( -name "*.html" -o -name "*.css" -o -name "*.js" \) \

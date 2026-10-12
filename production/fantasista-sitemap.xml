@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://tus-fantasista.pages.dev/</loc></url>
-  <url><loc>https://tus-fantasista.pages.dev/about/</loc></url>
+  <url><loc>https://tus-fantasista.pages.dev/</loc><lastmod>2026-10-13</lastmod></url>
+  <url><loc>https://tus-fantasista.pages.dev/about/</loc><lastmod>2026-10-13</lastmod></url>
   <url><loc>https://tus-fantasista.pages.dev/festa/</loc></url>
   <url><loc>https://tus-fantasista.pages.dev/archive/</loc></url>
   <url><loc>https://tus-fantasista.pages.dev/documents/</loc></url>
@@ -13,6 +13,7 @@
   <url><loc>https://tus-fantasista.pages.dev/terms/</loc></url>
   <url><loc>https://tus-fantasista.pages.dev/privacy/</loc></url>
   <url><loc>https://tus-fantasista.pages.dev/news/festa60-site-open/</loc></url>
+  <url><loc>https://tus-fantasista.pages.dev/news/festa60-registration-open/</loc></url>
   <url><loc>https://tus-fantasista.pages.dev/news/2025-festa-2/</loc></url>
   <url><loc>https://tus-fantasista.pages.dev/news/2025-festa-1/</loc></url>
   <url><loc>https://tus-fantasista.pages.dev/news/2024-festa-2/</loc></url>
