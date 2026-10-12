@@ -10,15 +10,98 @@ import {
   attendingPlanAmount,
   danceTicketBenefit,
   feePeriodForDate,
+  isApplicationOpen,
   noReceptionDiscount,
   ticketLineAmount,
 } from "./festa60-pricing.js";
+
+const main = document.querySelector("main");
+if (main) {
+  const refreshCurrentPrices = () => renderCurrentPrices(main);
+  refreshCurrentPrices();
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") refreshCurrentPrices();
+  });
+  window.addEventListener("focus", refreshCurrentPrices);
+  window.setInterval(() => {
+    if (document.visibilityState === "visible") refreshCurrentPrices();
+  }, 60_000);
+  setText(main, "[data-fundraising-final-target]", `最終目標 ${formatCompactAmount(FUNDRAISING_CONFIG.final_target_jpy)}`);
+}
 
 const calculator = document.querySelector("[data-support-calculator]");
 
 if (calculator) initializeCalculator(calculator);
 
 document.querySelectorAll("[data-support-goals]").forEach(renderSupportGoals);
+if (main) initializeSupportAnchors(main);
+
+function initializeSupportAnchors(scope) {
+  function revealTarget(hash) {
+    let target;
+    try {
+      target = document.getElementById(decodeURIComponent(hash.slice(1)));
+    } catch {
+      return null;
+    }
+    if (!target || !scope.contains(target)) return null;
+    // Preserve deep links after moving their sections into disclosures.
+    for (let disclosure = target.closest("details"); disclosure; disclosure = disclosure.parentElement?.closest("details")) {
+      disclosure.open = true;
+    }
+    return target;
+  }
+
+  const revealHash = () => {
+    if (!location.hash) return;
+    const target = revealTarget(location.hash);
+    if (target) target.scrollIntoView({ block: "start" });
+  };
+  scope.addEventListener("click", (event) => {
+    const link = event.target.closest('a[href^="#"]');
+    if (link) revealTarget(link.getAttribute("href"));
+  }, true);
+  window.addEventListener("hashchange", revealHash);
+  revealHash();
+}
+
+function renderCurrentPrices(scope) {
+  const now = new Date();
+  const currentPeriod = feePeriodForDate(now);
+  const isOpen = isApplicationOpen(now);
+  const period = isOpen ? currentPeriod : "regular";
+  const cohortKeys = ["obog", "obog_6_10", "obog_5_under"];
+  const standardCells = [...scope.querySelectorAll("[data-support-current-amount]")];
+  const planCells = [...scope.querySelectorAll("[data-support-current-plan]")];
+  const updates = [];
+
+  for (const element of standardCells) {
+    const cohort = element.dataset.supportCurrentAmount;
+    const reception = element.dataset.supportReception;
+    if (!cohortKeys.includes(cohort) || !RECEPTION_ATTENDANCE.includes(reception)) return;
+    updates.push([element, ticketLineAmount(cohort, period, reception, CURRENT_PRICING_VERSION)]);
+  }
+  for (const element of planCells) {
+    const tier = element.dataset.supportCurrentPlan;
+    const cohort = element.dataset.supportCohort;
+    const reception = element.dataset.supportReception;
+    if (!Object.hasOwn(ATTENDING_PLAN_TOTALS, tier) || !cohortKeys.includes(cohort) || !RECEPTION_ATTENDANCE.includes(reception)) return;
+    updates.push([element, attendingPlanAmount(tier, cohort, period, reception, CURRENT_PRICING_VERSION)]);
+  }
+  if (!updates.length) return;
+
+  const periodLabels = {
+    early: "2026年10月31日までの申込料金",
+    year_end: "2026年11月1日〜12月31日の申込料金",
+    regular: "2027年1月1日〜1月31日の申込料金",
+  };
+  updates.forEach(([element, amount]) => { element.textContent = formatCurrency(amount); });
+  setText(scope, "[data-support-current-period]", isOpen ? periodLabels[period] : "申込受付は終了しました（2027年1月の料金）");
+  scope.querySelectorAll("[data-support-current-closed-note]").forEach((element) => { element.hidden = isOpen; });
+  scope.querySelectorAll("[data-support-apply]").forEach((element) => { element.hidden = !isOpen; });
+  scope.querySelectorAll("[data-support-current-loaded]").forEach((element) => { element.hidden = false; });
+  scope.querySelectorAll("[data-support-current-fallback]").forEach((element) => { element.hidden = true; });
+}
 
 function initializeCalculator(form) {
   const cohortSelect = form.querySelector("#support-cohort");
@@ -97,15 +180,18 @@ function formatCurrency(value) {
   return `${new Intl.NumberFormat("ja-JP").format(value)}円`;
 }
 
+function formatCompactAmount(value) {
+  return `${new Intl.NumberFormat("ja-JP").format(value / 10000)}万円`;
+}
+
 function renderSupportGoals(list) {
   // Keep amounts shared; explain spending priorities once in the surrounding copy.
   const items = FUNDRAISING_CONFIG.goals.map((goal) => {
     const item = document.createElement("li");
     const title = document.createElement("strong");
     const allocation = document.createElement("span");
-    const compact = (value) => `${new Intl.NumberFormat("ja-JP").format(value / 10000)}万円`;
-    title.textContent = `${goal.label} ${compact(goal.amount_jpy)}`;
-    allocation.textContent = `現役支援 約${compact(goal.active_support_jpy)}｜FESTA充実 約${compact(goal.festa_enhancement_jpy)}`;
+    title.textContent = `${goal.label} ${formatCompactAmount(goal.amount_jpy)}`;
+    allocation.textContent = `現役支援 約${formatCompactAmount(goal.active_support_jpy)}｜FESTA充実 約${formatCompactAmount(goal.festa_enhancement_jpy)}`;
     item.append(title, allocation);
     return item;
   });
