@@ -27,6 +27,9 @@ cp "$root_dir/production/robots.txt" "$output_dir/robots.txt"
 cp "$root_dir/production/sitemap.xml" "$output_dir/sitemap.xml"
 cp "$root_dir/production/google710a6c95640111d9.html" "$output_dir/google710a6c95640111d9.html"
 
+# Include current prices in the raw HTML as well as the browser-rendered Event.
+node "$root_dir/scripts/build-festa60-event-schema.mjs" "$output_dir/festa-60th/index.html"
+
 # Remove internal review-phase markers from the standalone production artifact.
 find "$output_dir" -type f \( -name "*.html" -o -name "*.css" -o -name "*.js" \) \
   -exec perl -0pi -e 's~/\*\s*REVIEW_[^*]*\*/~~g; s~<!--\s*REVIEW_[^-]*-->~~g' {} +

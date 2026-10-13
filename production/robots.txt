@@ -1,6 +1,5 @@
 User-agent: *
 Allow: /
-Disallow: /festa60-register/
 Disallow: /api/
 
 Sitemap: https://tus-fantasista-festa60.pages.dev/sitemap.xml
