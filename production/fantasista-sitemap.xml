@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://tus-fantasista.pages.dev/</loc><lastmod>2026-10-13</lastmod></url>
+  <url><loc>https://tus-fantasista.pages.dev/</loc><lastmod>2026-10-22</lastmod></url>
   <url><loc>https://tus-fantasista.pages.dev/about/</loc><lastmod>2026-10-13</lastmod></url>
   <url><loc>https://tus-fantasista.pages.dev/festa/</loc></url>
-  <url><loc>https://tus-fantasista.pages.dev/archive/</loc></url>
+  <url><loc>https://tus-fantasista.pages.dev/archive/</loc><lastmod>2026-10-22</lastmod></url>
   <url><loc>https://tus-fantasista.pages.dev/documents/</loc></url>
   <url><loc>https://tus-fantasista.pages.dev/history/</loc></url>
   <url><loc>https://tus-fantasista.pages.dev/history/context/</loc></url>
@@ -20,4 +20,5 @@
   <url><loc>https://tus-fantasista.pages.dev/news/2024-festa-1/</loc></url>
   <url><loc>https://tus-fantasista.pages.dev/news/festa-2023/</loc></url>
   <url><loc>https://tus-fantasista.pages.dev/news/festa60-early-discount-extension/</loc><lastmod>2026-10-01</lastmod></url>
+  <url><loc>https://tus-fantasista.pages.dev/news/php-security-20261022/</loc><lastmod>2026-10-22</lastmod></url>
 </urlset>
