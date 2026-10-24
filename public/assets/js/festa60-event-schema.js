@@ -43,7 +43,7 @@ export function buildEventOffers(now = new Date()) {
 
 export function buildEventPriceCopy(now = new Date()) {
   if (!isApplicationOpen(now)) {
-    return { heading: "参加申込の受付は終了しました", example: "詳しくは事務局へお問い合わせください。" };
+    return { heading: "参加申込の受付は終了しました", example: "詳しくは事務局へお問い合わせください。", attending: "受付終了", festaOnly: "受付終了" };
   }
   const period = feePeriodForDate(now);
   const discount = BASE_FEES.obog.regular - BASE_FEES.obog[period];
@@ -55,8 +55,14 @@ export function buildEventPriceCopy(now = new Date()) {
   const festaOnly = ticketLineAmount("obog_5_under", period, "without_reception", CURRENT_PRICING_VERSION);
   return {
     heading,
-    example: `${discount > 0 ? "通常参加・参加者向け寄付プランに適用し、卒部年次割引も併用できます。" : "卒部年次割引は、通常参加・参加者向け寄付プランに適用します。"}${cohortLabels.obog_5_under}の方は、通常参加（第一部＋第二部）が${formatAmount(attending)}、第一部のみなら${formatAmount(festaOnly)}です。`,
+    example: `${cohortLabels.obog_5_under}の方は、FESTA＋懇親会が${formatAmount(attending)}、FESTAのみが${formatAmount(festaOnly)}です。卒部年次割引${discount > 0 ? `と${period === "early" ? "超早期" : "早期"}申込割引` : ""}を反映しています。`,
+    attending: formatRange(attending, ticketLineAmount("obog", period, "attending", CURRENT_PRICING_VERSION)),
+    festaOnly: formatRange(festaOnly, ticketLineAmount("obog", period, "without_reception", CURRENT_PRICING_VERSION)),
   };
+}
+
+function formatRange(min, max) {
+  return `${min.toLocaleString("ja-JP")}〜${formatAmount(max)}`;
 }
 
 function formatAmount(amount) {
@@ -76,6 +82,10 @@ export function refreshEventSchema(scope, now = new Date()) {
   const example = scope.querySelector("[data-event-price-example]");
   if (heading) heading.innerHTML = copy.heading;
   if (example) example.textContent = copy.example;
+  const attending = scope.querySelector("[data-event-price-attending]");
+  const festaOnly = scope.querySelector("[data-event-price-festa-only]");
+  if (attending) attending.textContent = copy.attending;
+  if (festaOnly) festaOnly.textContent = copy.festaOnly;
 }
 
 if (typeof document !== "undefined" && document.querySelector("#festa60-event-schema")) {

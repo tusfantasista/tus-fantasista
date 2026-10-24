@@ -1,0 +1,67 @@
+.dance-invitation-player {
+  min-width: 0;
+  margin: 0;
+  color: #f8edd6;
+}
+
+.dance-invitation-player__screen {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  border: 1px solid #675633;
+  border-radius: 8px;
+  background: #060b13;
+}
+
+.dance-invitation-player__cover,
+.dance-invitation-player video {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.dance-invitation-player__cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.dance-invitation-player__play {
+  width: 100%;
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 12px 18px;
+  border: 1px solid #e4bf70;
+  border-radius: 4px;
+  background: #070c16ed;
+  color: #fff1ce;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dance-invitation-player__play::before {
+  content: "▶";
+  color: #ffd21c;
+  font-size: 16px;
+}
+
+.dance-invitation-player__play:hover { background: #1a2233; }
+.dance-invitation-player a { color: inherit; text-underline-offset: 4px; }
+.dance-invitation-player :focus-visible { outline: 3px solid #e8b650; outline-offset: 4px; }
+.dance-invitation-player figcaption { margin-top: 12px; color: inherit; font-size: 12px; line-height: 1.8; }
+.dance-invitation-player figcaption p { margin: 4px 0; }
+.dance-invitation-player details { margin-top: 10px; font-size: 12px; line-height: 1.9; }
+.dance-invitation-player summary { width: fit-content; cursor: pointer; text-decoration: underline; text-underline-offset: 4px; }
+.dance-invitation-player details > div { margin-top: 8px; }
+.dance-invitation-player [hidden] { display: none !important; }
+
+@media (max-width: 420px) {
+  .dance-invitation-player__play { min-height: 44px; padding: 8px; font-size: 12px; }
+}

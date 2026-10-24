@@ -19,6 +19,8 @@ const copy = buildEventPriceCopy(now);
 for (const [tag, attribute, text] of [
   ["h3", "data-event-price-heading", copy.heading],
   ["p", "data-event-price-example", copy.example],
+  ["strong", "data-event-price-attending", copy.attending],
+  ["strong", "data-event-price-festa-only", copy.festaOnly],
 ]) {
   const pattern = new RegExp(`(<${tag}\\b[^>]*${attribute}[^>]*>)[\\s\\S]*?(</${tag}>)`);
   if (!pattern.test(html)) throw new Error(`Missing ${attribute}`);

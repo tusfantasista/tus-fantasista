@@ -1,0 +1,222 @@
+.dance-continuity-home {
+  background: #f6f2e9;
+  color: #272723;
+}
+
+.dance-continuity-home__intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(28px, 5vw, 72px);
+}
+
+.dance-continuity-home__copy {
+  min-width: 0;
+}
+
+.dance-continuity-home__eyebrow {
+  margin: 0 0 14px;
+  color: #7a4b23;
+  font-size: 0.86rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.dance-continuity-home__copy h2 {
+  margin: 0 0 24px;
+  color: #252b35;
+  font-size: clamp(1.65rem, 2.6vw, 2.35rem);
+  line-height: 1.6;
+  letter-spacing: -0.035em;
+}
+
+.dance-continuity-home__copy > p:not(.dance-continuity-home__eyebrow) {
+  margin: 0 0 18px;
+  max-width: 32em;
+  color: #494941;
+  font-size: 1rem;
+  line-height: 1.95;
+}
+
+.dance-continuity-home__copy > p.dance-continuity-home__promise {
+  margin: 26px 0 0;
+  border-left: 3px solid #a97a30;
+  padding-left: 17px;
+  color: #5d3428;
+  font-weight: 800;
+}
+
+.dance-continuity-home__photo-story {
+  min-width: 0;
+  margin: 0;
+}
+
+.dance-continuity-home__photos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 14px;
+}
+
+.dance-continuity-home__photos img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 14px;
+  box-shadow: 0 12px 30px rgba(47, 37, 19, 0.12);
+}
+
+.dance-continuity-home__photos img + img {
+  margin-top: 48px;
+}
+
+.dance-continuity-home__photo-story figcaption {
+  margin-top: 14px;
+  color: #68645b;
+  font-size: 0.76rem;
+  line-height: 1.6;
+  text-align: right;
+}
+
+.dance-continuity-home__event {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+  gap: clamp(24px, 4vw, 52px);
+  margin-top: 52px;
+  border: 1px solid rgba(165, 122, 48, 0.32);
+  border-radius: 18px;
+  padding: clamp(24px, 3.6vw, 42px);
+  background: #222b3a;
+  color: #fff9eb;
+}
+
+.dance-continuity-home__event-copy {
+  min-width: 0;
+}
+
+.dance-continuity-home__event .dance-continuity-home__eyebrow {
+  color: #ecd18f;
+}
+
+.dance-continuity-home__event h3 {
+  margin: 0 0 16px;
+  color: #fff9eb;
+  font-size: clamp(1.3rem, 2vw, 1.65rem);
+  line-height: 1.5;
+}
+
+.dance-continuity-home__event-copy > p:not(.dance-continuity-home__eyebrow) {
+  margin: 0;
+  color: #e5e4df;
+  font-size: 0.94rem;
+  line-height: 1.9;
+}
+
+.dance-continuity-home__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.dance-continuity-home__actions .button {
+  min-width: 0;
+  max-width: 100%;
+  padding: 13px 17px;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  text-align: center;
+  white-space: normal;
+}
+
+.dance-continuity-home__actions .button--ghost {
+  border-color: rgba(255, 249, 235, 0.5);
+  color: #fff9eb;
+}
+
+.dance-continuity-home__small-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  margin-top: 18px;
+}
+
+.dance-continuity-home__small-links a {
+  color: #ecd18f;
+  font-size: 0.8rem;
+  line-height: 1.8;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.dance-continuity-home__facts {
+  display: grid;
+  gap: 18px;
+  align-content: center;
+  min-width: 0;
+  margin: 0;
+  border-left: 1px solid rgba(236, 209, 143, 0.28);
+  padding-left: clamp(24px, 3vw, 38px);
+}
+
+.dance-continuity-home__facts dt {
+  margin-bottom: 5px;
+  color: #c5cbd3;
+  font-size: 0.76rem;
+  font-weight: 500;
+}
+
+.dance-continuity-home__facts dd {
+  margin: 0;
+  color: #fff9eb;
+  font-size: 0.94rem;
+  font-weight: 700;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px) {
+  .dance-continuity-home__intro,
+  .dance-continuity-home__event {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dance-continuity-home__photo-story {
+    width: min(100%, 470px);
+    margin-inline: auto;
+  }
+
+  .dance-continuity-home__photos img + img {
+    margin-top: 28px;
+  }
+
+  .dance-continuity-home__event {
+    margin-top: 34px;
+  }
+
+  .dance-continuity-home__facts {
+    border-top: 1px solid rgba(236, 209, 143, 0.28);
+    border-left: 0;
+    padding-top: 24px;
+    padding-left: 0;
+  }
+}
+
+@media (max-width: 420px) {
+  .dance-continuity-home__copy h2 {
+    font-size: clamp(1.35rem, 6vw, 1.55rem);
+    letter-spacing: -0.045em;
+  }
+
+  .dance-continuity-home__photos {
+    gap: 10px;
+  }
+
+  .dance-continuity-home__event {
+    padding: 22px 18px;
+  }
+
+  .dance-continuity-home__actions .button {
+    width: 100%;
+  }
+}

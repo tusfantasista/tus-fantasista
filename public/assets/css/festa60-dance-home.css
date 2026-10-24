@@ -1,0 +1,47 @@
+.dance-welcome {
+  padding: clamp(36px, 5vw, 64px) 0;
+  background: #0b101b;
+}
+
+.dance-welcome__grid {
+  display: grid;
+  grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr);
+  align-items: center;
+  gap: clamp(24px, 4vw, 48px);
+}
+
+.dance-welcome__copy { min-width: 0; }
+.dance-welcome__eyebrow { margin: 0 0 12px; color: #d6b779; font-size: 12px; letter-spacing: .08em; }
+.dance-welcome h2 { margin: 0 0 18px; color: #f4e6ca; font-size: clamp(23px, 2.7vw, 34px); line-height: 1.65; font-weight: 700; }
+.dance-welcome__copy > p:not(.dance-welcome__eyebrow) { margin: 12px 0; color: #d5cfc4; font-size: 14px; line-height: 1.95; }
+.dance-welcome__copy > a { display: inline-block; margin-top: 12px; color: #f0cf8c; font-weight: 700; text-underline-offset: 6px; }
+.dance-welcome__copy > a:focus-visible { outline: 2px solid #ffd21c; outline-offset: 5px; }
+
+.event-focus .event-focus__program { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.event-focus .event-focus__item { min-width: 0; overflow: hidden; }
+.event-focus__photo { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 4px; margin-bottom: 20px; }
+.event-focus__item h3 { line-height: 1.6; }
+.event-focus__performers { margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; line-height: 1.9; }
+.event-focus__performers p { margin: 6px 0; }
+.event-focus__performers strong { color: var(--text); }
+.event-focus__performers a { color: var(--gold); text-underline-offset: 4px; }
+
+.home-current-fees { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; margin-top: 24px; }
+.home-current-fees article { min-width: 0; padding: clamp(20px, 3vw, 30px); border: 1px solid var(--line-strong); background: var(--panel); }
+.home-current-fees h3 { margin: 0 0 14px; font-size: 18px; }
+.home-current-fees strong { display: block; color: var(--gold); font-size: clamp(23px, 3vw, 34px); line-height: 1.5; }
+.home-current-fees p { margin: 10px 0 0; color: var(--muted); font-size: 13px; line-height: 1.8; }
+.home-current-fees__note { color: var(--muted); font-size: 12px; line-height: 1.8; }
+.home-donation-link { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; line-height: 1.9; }
+.home-donation-link a { color: var(--gold); font-weight: 700; text-underline-offset: 4px; }
+.home-donation-link p { margin: 6px 0; }
+
+@media (max-width: 800px) {
+  .dance-welcome__grid { grid-template-columns: minmax(0, 1fr); }
+  .event-focus .event-focus__program { grid-template-columns: minmax(0, 1fr); }
+  .event-focus__photo { max-height: 300px; object-position: center 40%; }
+}
+
+@media (max-width: 560px) {
+  .home-current-fees { grid-template-columns: minmax(0, 1fr); }
+}

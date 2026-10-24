@@ -30,10 +30,14 @@ const cases = [
 const schemaElement = { textContent: JSON.stringify(event) };
 const headingElement = { innerHTML: "" };
 const exampleElement = { textContent: "" };
+const attendingElement = { textContent: "" };
+const festaOnlyElement = { textContent: "" };
 const elements = {
   "#festa60-event-schema": schemaElement,
   "[data-event-price-heading]": headingElement,
   "[data-event-price-example]": exampleElement,
+  "[data-event-price-attending]": attendingElement,
+  "[data-event-price-festa-only]": festaOnlyElement,
 };
 const scope = { querySelector: (selector) => elements[selector] };
 for (const [date, prices, expiry] of cases) {
@@ -62,6 +66,8 @@ for (const [date, prices, expiry] of cases) {
   const copy = buildEventPriceCopy(now);
   assert.equal(headingElement.innerHTML, copy.heading);
   assert.equal(exampleElement.textContent, copy.example);
+  assert.equal(attendingElement.textContent, `${prices[0].toLocaleString("ja-JP")}〜${prices[4].toLocaleString("ja-JP")}円`, date);
+  assert.equal(festaOnlyElement.textContent, `${prices[1].toLocaleString("ja-JP")}〜${prices[5].toLocaleString("ja-JP")}円`, date);
   assert(exampleElement.textContent.includes(`${prices[0].toLocaleString("ja-JP")}円`));
   assert(exampleElement.textContent.includes(`${prices[1].toLocaleString("ja-JP")}円`));
 }
@@ -69,11 +75,16 @@ for (const now of [new Date("2027-02-01T00:00:00+09:00"), new Date("invalid")]) 
   refreshEventSchema(scope, now);
   assert(!Object.hasOwn(JSON.parse(schemaElement.textContent), "offers"), "Closed or unknown time must not advertise purchasable tickets");
   assert(headingElement.innerHTML.includes("終了"));
+  assert.equal(attendingElement.textContent, "受付終了");
+  assert.equal(festaOnlyElement.textContent, "受付終了");
 }
 
 const production = await fs.readFile("festa60-public/festa-60th/index.html", "utf8");
 assert.deepEqual(getEvent(production).offers, buildEventOffers(), "Build includes current prices without needing JavaScript");
 assert.deepEqual(getEvent(production).performer, event.performer);
+for (const [attribute, value] of [["attending", buildEventPriceCopy().attending], ["festa-only", buildEventPriceCopy().festaOnly]]) {
+  assert(production.includes(`data-event-price-${attribute}>${value}</strong>`), "Built page includes the current fee range without JavaScript");
+}
 const robots = await fs.readFile("festa60-public/robots.txt", "utf8");
 assert(!/^Disallow:\s*\/festa60-register\/?\s*$/m.test(robots), "Google can crawl offers.url");
 assert(robots.includes("Disallow: /api/"), "API crawl restriction preserved");
