@@ -32,6 +32,20 @@
     document.body.appendChild(notice);
   }
 
+  function initStagingLinks() {
+    const reviewHost = /^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)?fantasista-review-202605-staging\.pages\.dev$/;
+    if (!reviewHost.test(location.hostname.toLowerCase())) return;
+    const targets = {
+      register: "/festa60-register/",
+      support: "/festa-60th/support/",
+      ridaisai: "/news/ridaisai-step-20261121/",
+    };
+    document.querySelectorAll("a[data-staging-target]").forEach((link) => {
+      const key = link.getAttribute("data-staging-target");
+      if (Object.hasOwn(targets, key)) link.href = targets[key];
+    });
+  }
+
   function initMobileMenu() {
     const toggle = document.querySelector(".menu-toggle");
     const header = document.querySelector(".site-header, .header");
@@ -657,6 +671,7 @@
   }
 
   initStagingNotice();
+  initStagingLinks();
   initStructuredNavigation();
   initMainFooterLinks();
   initFestaGuideMenus();
