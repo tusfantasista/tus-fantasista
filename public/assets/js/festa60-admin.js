@@ -157,14 +157,15 @@
     const recordedAmount = Number(application.amount_received_jpy || 0);
     const remainingAmount = Number(application.amount_remaining_jpy || 0);
     const applicationStatus = application.payment_status || application.paymentStatus || "";
-    if (!["paid", "cancelled", "refunded"].includes(applicationStatus) && recordedAmount > 0 && remainingAmount > 0) {
+    if (["cancelled", "refunded"].includes(applicationStatus)) return applicationStatus;
+    if (applicationStatus !== "paid" && recordedAmount > 0 && remainingAmount > 0) {
       return "partially_funded";
     }
     if (application.latest_payment_status === "partially_funded") return "partially_funded";
     const paymentMethod = application.latest_payment_method || application.payment_method;
     const isIncompleteCheckout = paymentMethod === "stripe_checkout"
       && Boolean(application.stripe_checkout_session_id)
-      && !["paid", "cancelled", "refunded"].includes(applicationStatus)
+      && applicationStatus !== "paid"
       && !application.application_received_email_sent_at
       && !application.payment_confirmed_email_sent_at;
     if (isIncompleteCheckout) return "checkout_incomplete";
@@ -367,7 +368,7 @@
     const planCounts = planDefinitions
       .map((definition) => ({
         ...definition,
-        value: formalApplications.filter((item) => definition.exact
+        value: active.filter((item) => definition.exact
           ? item.ticket_type === definition.key
           : planKey(item.ticket_type) === definition.key).length
       }))
