@@ -98,6 +98,19 @@
 .movement-summary__panel h4 { margin: 3px 0 0; color: var(--f60-cream, #fff4d0); font-size: clamp(1.05rem, 2vw, 1.35rem); }
 .movement-summary__label { margin: 0; color: var(--f60-gold, #ffd21c); font-size: .7rem; font-weight: 800; letter-spacing: .08em; }
 .movement-summary__panel .fundraising-summary__metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 16px; }
+.movement-summary__total {
+  margin: 16px 0 0;
+  color: var(--f60-cream, #fff4d0);
+  font-size: clamp(2.5rem, 6vw, 4rem);
+  font-weight: 800;
+  line-height: 1.2;
+}
+.movement-summary__breakdown {
+  margin: 10px 0 0;
+  color: var(--f60-muted, #c6b995);
+  font-size: .9rem;
+  line-height: 1.7;
+}
 .movement-summary__decades,
 .movement-summary__status,
 .movement-summary__panel .fundraising-summary__plans { color: var(--f60-muted, #c6b995); font-size: .84rem; line-height: 1.7; }

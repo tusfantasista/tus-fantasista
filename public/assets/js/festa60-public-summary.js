@@ -15,6 +15,7 @@ if (roots.length && REGISTRATION_STATUS === "open") {
 }
 
 function renderSummaryUnavailable(root) {
+  setText(root, "[data-summary-total]", "集計中");
   setText(root, "[data-summary-participants]", "集計中");
   setText(root, "[data-summary-companions]", "受付開始後に集計");
   setText(root, "[data-summary-supporters]", "受付開始後に集計");
@@ -47,6 +48,7 @@ async function loadPublicSummary() {
 }
 
 function renderSummary(root, summary) {
+  const participantTotal = Number(summary.obog_participant_count || 0) + Number(summary.companion_count || 0);
   const participantText = summary.participant_count_visible
     ? `${formatNumber(summary.obog_participant_count)}名`
     : "参加申込受付中";
@@ -73,8 +75,11 @@ function renderSummary(root, summary) {
     parts.push(`追加寄付 ${formatNumber(planCounts.additional_donation)}名`);
   }
 
+  setText(root, "[data-summary-total]", summary.participant_count_visible ? `${formatNumber(participantTotal)}名` : "参加申込受付中");
   setText(root, "[data-summary-participants]", participantText);
   setText(root, "[data-summary-companions]", summary.participant_count_visible ? `${formatNumber(summary.companion_count)}名` : "集計中");
+  const participantBreakdown = root.querySelector("[data-summary-participant-breakdown]");
+  if (participantBreakdown) participantBreakdown.hidden = !summary.participant_count_visible;
   setText(root, "[data-summary-supporters]", `${formatNumber(summary.supporter_count)}名`);
   setText(root, "[data-summary-donation]", formatCurrency(summary.donation_equivalent_jpy));
   setText(root, "[data-summary-plan-counts]", parts.length ? parts.join(" / ") : "寄付プランのお申し込みを受付中です。");
