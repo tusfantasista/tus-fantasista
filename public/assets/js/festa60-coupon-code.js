@@ -2,6 +2,6 @@
 const ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 
 export function randomCouponCode() {
-  const random = globalThis.crypto.getRandomValues(new Uint8Array(8));
+  const random = globalThis.crypto.getRandomValues(new Uint8Array(6));
   return Array.from(random, (byte) => ALPHABET[byte & 31]).join("");
 }

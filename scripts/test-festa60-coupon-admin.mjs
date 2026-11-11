@@ -136,7 +136,7 @@ const copied = [];
 let randomCalls = 0;
 let uuidCalls = 0;
 const localCrypto = { getRandomValues(bytes) {
-  assert.equal(bytes.byteLength, 8, "generation obtains secure random bytes for 8 uniformly selected symbols");
+  assert.equal(bytes.byteLength, 6, "generation obtains secure random bytes for 6 uniformly selected symbols");
   randomCalls += 1;
   for (let index = 0; index < bytes.length; index += 1) bytes[index] = (randomCalls - 1) * 16 + index;
   return bytes;
@@ -179,12 +179,12 @@ try {
 
   const beforeGeneration = requests.length;
   await ui.find("data-coupon-generate").emit("click");
-  assert.equal(ui.field("code").value, "23456789");
+  assert.equal(ui.field("code").value, "234567");
   assert.equal(ui.field("expires_at").value, "", "generation does not invent an expiration date");
   assert.match(ui.find("data-coupon-generated").textContent, /有効期限を設定して「クーポンを発行」/);
   assert.equal(requests.length, beforeGeneration, "generation does not save or request a payment");
   await ui.find("data-coupon-generate").emit("click");
-  assert.equal(ui.field("code").value, "JKLMNPQR");
+  assert.equal(ui.field("code").value, "JKLMNP");
   const previousCode = ui.field("code").value;
   Object.defineProperty(globalThis, "crypto", { configurable: true, value: {} });
   await ui.find("data-coupon-generate").emit("click");
@@ -381,7 +381,7 @@ try {
   await tick();
   await generatedUi.find("data-coupon-generate").emit("click");
   const generatedCode = generatedUi.field("code").value;
-  assert.match(generatedCode, /^[2-9A-HJ-NP-Z]{8}$/);
+  assert.match(generatedCode, /^[2-9A-HJ-NP-Z]{6}$/);
   const beforeDate = requests.length;
   await generatedUi.form.emit("submit");
   assert.equal(requests.length, beforeDate, "the generated code still needs a required expiration before issue");

@@ -1,4 +1,4 @@
-import { randomCouponCode } from "./festa60-coupon-code.js";
+import { randomCouponCode } from "./festa60-coupon-code.js?v=20261112-6";
 
 const API_URL = "/api/festa60/admin/coupons";
 const dateFormatter = new Intl.DateTimeFormat("ja-JP", {
