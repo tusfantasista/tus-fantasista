@@ -475,6 +475,7 @@ export function initCouponAdmin(root) {
     bulkSummary.textContent = `${batch.count}枚${replayed ? "（保存済みの発行結果）" : ""} / 発行時の有効期限 ${formatDate(batch.expires_at)}（日本時間）${batch.label ? ` / ${batch.label}` : ""}`;
     bulkResult.hidden = false;
     bulkCodes.focus({ preventScroll: true });
+    updateControls();
   }
 
   async function loadBatchHistory() {

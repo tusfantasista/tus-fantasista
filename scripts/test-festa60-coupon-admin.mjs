@@ -529,9 +529,10 @@ try {
   assert.equal(bulkUi.find("data-coupon-bulk-codes").value.split("\n").length, 100);
   assert.equal(bulkUi.find("data-coupon-list").querySelectorAll("article").length, 105);
 
+  const historyCoupons = batchCoupons(2, "a005");
   const savedBatch = { batch_id: "batch-test-history", count: 2, label: "再読み込み後の記録", starts_at: null,
-    expires_at: coupon.expires_at, created_at: coupon.created_at, codes: twoCoupons.map((entry) => entry.code) };
-  responses.push(listResponse(twoCoupons, { can_issue: false, can_manage: false }), historyResponse([savedBatch]));
+    expires_at: coupon.expires_at, created_at: coupon.created_at, codes: historyCoupons.map((entry) => entry.code) };
+  responses.push(listResponse(historyCoupons, { can_issue: false, can_manage: false }), historyResponse([savedBatch]));
   const historyUi = fixture({ bulk: true });
   initCouponAdmin(historyUi.root);
   await tick();
@@ -540,7 +541,11 @@ try {
   await historyUi.find("data-coupon-bulk-history-show").emit("click");
   assert.equal(historyUi.find("data-coupon-bulk-codes").value, savedBatch.codes.join("\n"), "history restores complete code lists after a reload");
   assert.match(historyUi.find("data-coupon-bulk-summary").textContent, /発行時の有効期限/);
+  assert.equal(historyUi.find("data-coupon-bulk-copy").disabled, false,
+    "restoring a batch for a read-only viewer enables copying the populated textarea");
+  const copiesBeforeHistoryRestore = copied.length;
   await historyUi.find("data-coupon-bulk-copy").emit("click");
+  assert.equal(copied.length, copiesBeforeHistoryRestore + 1, "history copy must actually write to the clipboard");
   assert.equal(copied.at(-1), savedBatch.codes.join("\n"), "all CRM viewers may copy existing batch codes");
   const beforeReadOnlyBatch = requests.length;
   historyUi.bulkField("expires_at").value = "2027-01-31T23:59";
