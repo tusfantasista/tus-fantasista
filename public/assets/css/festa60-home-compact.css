@@ -22,6 +22,51 @@
   margin-top: 24px;
 }
 
+.festa-pr-video {
+  padding-block: clamp(32px, 5vw, 64px);
+  scroll-margin-top: 96px;
+}
+
+.festa-pr-video .wrap {
+  max-width: 980px;
+}
+
+.festa-pr-video h2 span,
+.festa-pr-video time {
+  white-space: nowrap;
+}
+
+.festa-pr-video video {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: #070c14;
+}
+
+.festa-pr-video__info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.festa-pr-video__notice {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 0.875rem;
+  line-height: 1.7;
+}
+
+.festa-pr-video a {
+  color: var(--gold);
+  text-underline-offset: 3px;
+}
+
 .chair-message__full {
   margin-top: 20px;
 }
@@ -54,5 +99,9 @@
 @media (max-width: 560px) {
   .event-focus .event-focus__program {
     grid-template-columns: 1fr;
+  }
+
+  .festa-pr-video h2 {
+    font-size: clamp(20px, 6vw, 30px);
   }
 }
