@@ -8,7 +8,7 @@ const origin = 'https://example.invalid';
 const issuer = 'issuer@example.invalid';
 const other = 'viewer@example.invalid';
 const database = new DatabaseSync(':memory:');
-for (const file of ['20261111_add_crm_coupons.sql', '20261111_add_coupon_redemptions.sql']) {
+for (const file of ['20261111_add_crm_coupons.sql', '20261111_add_coupon_redemptions.sql', '20261112_add_coupon_issue_batches.sql']) {
   database.exec(await readFile(new URL(`../migrations/${file}`, import.meta.url), 'utf8'));
 }
 function statement(sql, values = []) {
@@ -17,7 +17,11 @@ function statement(sql, values = []) {
     async all() { return { results: database.prepare(sql).all(...values) }; },
     async run() { return { meta: { changes: database.prepare(sql).run(...values).changes } }; } };
 }
-const env = { ENVIRONMENT: 'production', DB: { prepare: statement },
+const env = { ENVIRONMENT: 'production', DB: { prepare: statement, async batch(statements) {
+    database.exec('BEGIN');
+    try { const result = []; for (const item of statements) result.push(await item.run()); database.exec('COMMIT'); return result; }
+    catch (error) { database.exec('ROLLBACK'); throw error; }
+  } },
   FESTA60_COUPON_ISSUERS: `${issuer}, SECOND@example.invalid`,
   COUPON_ADMIN_RATE_LIMITER: { async limit() { return { success: true }; } } };
 function request(method, email, payload, suffix = '', headers = {}) {
@@ -50,5 +54,25 @@ try {
   assert.equal((await dispatch(request('PATCH', issuer, patch, `/${coupon.id}`))).status, 200);
   const preview = { ...env, ENVIRONMENT: 'staging', ADMIN_API_TOKEN: 'local-test-only' };
   assert.equal((await dispatch(request('POST', null, payload, '', { 'x-admin-token': 'local-test-only' }), preview)).status, 403);
-  console.log('PASS coupon issuer permissions: exact authenticated emails, case normalization, missing identity/config fail closed, read-only CRM users, protected POST/PATCH and no token-only issuance; local fixtures only');
+  // Literal /batch must win over /:id and retain the same server-side issuer guard.
+  assert.equal((await dispatch(request('GET', null, null, '/batch'))).status, 401);
+  const history = await (await dispatch(request('GET', other, null, '/batch'))).json();
+  assert.deepEqual(history.permissions, { can_issue: false, can_manage: false });
+  assert.deepEqual(history.batches, []);
+  const bulkPayload = { count: 3, expires_at: '2099-01-01T00:00:00+09:00', request_id: crypto.randomUUID() };
+  assert.equal((await dispatch(request('POST', other, bulkPayload, '/batch'))).status, 403);
+  assert.equal((await dispatch(request('POST', null, bulkPayload, '/batch', { 'x-admin-token': 'local-test-only' }), preview)).status, 403);
+  assert.equal(database.prepare('SELECT COUNT(*) AS n FROM coupon_issue_batches').get().n, 0);
+  const bulkResponse = await dispatch(request('POST', issuer, bulkPayload, '/batch'));
+  assert.equal(bulkResponse.status, 201);
+  const bulk = await bulkResponse.json();
+  assert.equal(bulk.coupons.length, 3);
+  const replayResponse = await dispatch(request('POST', issuer, bulkPayload, '/batch'));
+  assert.equal(replayResponse.status, 200);
+  assert.deepEqual((await replayResponse.json()).coupons.map(item => item.code), bulk.coupons.map(item => item.code));
+  assert.equal(database.prepare('SELECT COUNT(*) AS n FROM festa60_coupons').get().n, 4);
+  const issuedHistory = await (await dispatch(request('GET', other, null, '/batch'))).json();
+  assert.equal(issuedHistory.batches.length, 1);
+  assert.deepEqual(issuedHistory.batches[0].codes, bulk.coupons.map(item => item.code));
+  console.log('PASS coupon issuer permissions: exact authenticated emails, case normalization, missing identity/config fail closed, read-only CRM users, protected POST/PATCH and bulk route with idempotent replay, no token-only issuance; local fixtures only');
 } finally { database.close(); }

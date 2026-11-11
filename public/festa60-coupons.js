@@ -456,3 +456,146 @@ export async function onRequestAdminCoupons({ request, env, params = {}, actor }
     return unavailableAdmin();
   }
 }
+
+const BATCH_COLUMNS = "id, request_id, payload_hash, coupon_count, label, starts_at, expires_at, created_at";
+
+function batchConflict() {
+  return adminFailure("coupon_batch_conflict", "この発行操作には別の内容が登録されています。発行履歴を確認し、新しい操作としてやり直してください。", 409);
+}
+
+async function couponBatchHash(payload) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(payload)));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function readBatchByRequest(db, requestId) {
+  return db.prepare(`SELECT ${BATCH_COLUMNS} FROM coupon_issue_batches WHERE request_id = ? LIMIT 1`).bind(requestId).first();
+}
+
+async function issuedBatchResponse(db, batch, payloadHash, replayed) {
+  if (batch.payload_hash !== payloadHash) return batchConflict();
+  const result = await db.prepare(`${CRM_COUPON_SELECT}
+    JOIN coupon_issue_batch_items bi ON bi.coupon_id = c.id
+    WHERE bi.batch_id = ? ORDER BY bi.position`).bind(batch.id).all();
+  const coupons = result.results ?? [];
+  if (coupons.length !== batch.coupon_count || new Set(coupons.map((coupon) => coupon.code)).size !== batch.coupon_count) {
+    return unavailableAdmin();
+  }
+  return json({ ok: true, batch_id: batch.id, coupons, replayed }, replayed ? 200 : 201);
+}
+
+async function recentCouponBatches(db) {
+  const result = await db.prepare(`SELECT ${BATCH_COLUMNS} FROM coupon_issue_batches
+    ORDER BY created_at DESC, id DESC LIMIT 20`).all();
+  const headers = result.results ?? [];
+  if (!headers.length) return json({ ok: true, batches: [] });
+  const items = await db.prepare(`SELECT bi.batch_id, c.code FROM coupon_issue_batch_items bi
+    JOIN festa60_coupons c ON c.id = bi.coupon_id
+    WHERE bi.batch_id IN (${headers.map(() => "?").join(",")}) ORDER BY bi.batch_id, bi.position`)
+    .bind(...headers.map((batch) => batch.id)).all();
+  const codes = new Map(headers.map((batch) => [batch.id, []]));
+  for (const item of items.results ?? []) codes.get(item.batch_id)?.push(item.code);
+  const batches = headers.map((batch) => ({
+    batch_id: batch.id, count: batch.coupon_count, label: batch.label,
+    starts_at: batch.starts_at, expires_at: batch.expires_at, created_at: batch.created_at,
+    codes: codes.get(batch.id),
+  }));
+  if (batches.some((batch) => batch.codes.length !== batch.count || new Set(batch.codes).size !== batch.count)) {
+    return unavailableAdmin();
+  }
+  return json({ ok: true, batches });
+}
+
+export async function onRequestAdminCouponBatch({ request, env, actor }) {
+  // Authentication and issuer permission are enforced by the Worker wrapper.
+  if (typeof actor !== "string" || !actor.trim()) {
+    return adminFailure("unauthorized", "クーポンの管理には認証が必要です。", 401);
+  }
+  if (request.method !== "GET" && request.method !== "POST") {
+    return json({ ok: false, error: "method_not_allowed", message: "この方法では一括発行を操作できません。" }, 405, { allow: "GET, POST" });
+  }
+  if (request.method === "GET") {
+    try {
+      return env?.DB ? await recentCouponBatches(env.DB) : unavailableAdmin();
+    } catch {
+      return unavailableAdmin();
+    }
+  }
+  const origin = request.headers.get("origin");
+  const sameOrigin = origin ? origin === new URL(request.url).origin : request.headers.get("sec-fetch-site") === "same-origin";
+  if (!sameOrigin) return adminFailure("forbidden", "同じサイトから操作してください。", 403);
+  if (request.headers.get("content-type")?.split(";")[0].trim().toLowerCase() !== "application/json") {
+    return adminFailure("unsupported_media_type", "送信内容をご確認ください。", 415);
+  }
+  const limited = await enforceRateLimit(request, env, "COUPON_ADMIN_RATE_LIMITER", "festa60-admin-coupons");
+  if (limited) return limited;
+  const parsed = await readBoundedJson(request, ADMIN_BODY_BYTES);
+  if (!parsed.payload) return adminFailure(parsed.error, "送信内容をご確認ください。", parsed.status);
+  const payload = parsed.payload;
+  if (Object.keys(payload).some((key) => !["count", "request_id", "label", "starts_at", "expires_at"].includes(key))) {
+    return adminFailure("coupon_invalid_fields", "入力内容をご確認ください。一括発行のコードは自動生成されます。");
+  }
+  if (!Number.isInteger(payload.count) || payload.count < 1 || payload.count > 100) {
+    return adminFailure("coupon_invalid_count", "発行枚数は1から100までの整数で指定してください。");
+  }
+  if (typeof payload.request_id !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(payload.request_id)) {
+    return adminFailure("coupon_invalid_request_id", "発行操作の情報が無効です。画面を更新してください。");
+  }
+  const { count, request_id: requestId, ...fieldInput } = payload;
+  const fields = validateAdminFields(fieldInput);
+  if (fields.response) return fields.response;
+  const normalized = { count, label: fields.label, starts_at: fields.starts_at, expires_at: fields.expires_at };
+
+  try {
+    const db = env?.DB;
+    if (!db) return unavailableAdmin();
+    const payloadHash = await couponBatchHash(normalized);
+    const normalizedRequestId = requestId.toLowerCase();
+    const previous = await readBatchByRequest(db, normalizedRequestId);
+    if (previous) return await issuedBatchResponse(db, previous, payloadHash, true);
+    if (typeof db.batch !== "function") return unavailableAdmin();
+
+    const batchId = crypto.randomUUID();
+    const now = new Date().toISOString();
+    const generated = new Set();
+    const coupons = [];
+    for (let index = 0; index < count; index += 1) {
+      let code;
+      for (let attempt = 0; attempt < 8; attempt += 1) {
+        const bytes = crypto.getRandomValues(new Uint8Array(8));
+        const candidate = `F60-${Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("").toUpperCase()}`;
+        if (!generated.has(candidate)) { code = candidate; break; }
+      }
+      if (!code) return unavailableAdmin();
+      generated.add(code);
+      coupons.push({ id: crypto.randomUUID(), code, position: index });
+    }
+    // The strict unique request_id INSERT is the transaction's winner gate.
+    // A competing request must roll back all of its coupons before replaying.
+    const statements = [db.prepare(`INSERT INTO coupon_issue_batches (${BATCH_COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+      .bind(batchId, normalizedRequestId, payloadHash, count, fields.label, fields.starts_at, fields.expires_at, now)];
+    for (let offset = 0; offset < coupons.length; offset += 10) {
+      const chunk = coupons.slice(offset, offset + 10);
+      statements.push(db.prepare(`INSERT INTO festa60_coupons
+        (id, code, label, starts_at, expires_at, disabled_at, created_at, updated_at)
+        VALUES ${chunk.map(() => "(?, ?, ?, ?, ?, NULL, ?, ?)").join(",")}`)
+        .bind(...chunk.flatMap((coupon) => [coupon.id, coupon.code, fields.label, fields.starts_at, fields.expires_at, now, now])));
+      statements.push(db.prepare(`INSERT INTO coupon_issue_batch_items (batch_id, coupon_id, position)
+        VALUES ${chunk.map(() => "(?, ?, ?)").join(",")}`)
+        .bind(...chunk.flatMap((coupon) => [batchId, coupon.id, coupon.position])));
+    }
+    try {
+      const results = await db.batch(statements);
+      if (!Array.isArray(results) || results.some((result) => result.success === false)) throw new Error("Batch did not complete");
+    } catch {
+      // This also recovers an ambiguous transport failure after a committed
+      // transaction: the same request never creates another set of codes.
+      const committed = await readBatchByRequest(db, normalizedRequestId);
+      return committed ? await issuedBatchResponse(db, committed, payloadHash, true) : unavailableAdmin();
+    }
+    const committed = await readBatchByRequest(db, normalizedRequestId);
+    return committed ? await issuedBatchResponse(db, committed, payloadHash, false) : unavailableAdmin();
+  } catch {
+    return unavailableAdmin();
+  }
+}

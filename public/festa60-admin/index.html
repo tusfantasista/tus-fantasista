@@ -8,11 +8,11 @@
     <title>FESTA 60 申込管理</title>
     <link rel="stylesheet" href="../assets/css/festa60-admin.css?v=20260830-1" />
     <link rel="stylesheet" href="../assets/css/festa60-page-stats.css?v=20261111-2" />
-    <link rel="stylesheet" href="../assets/css/festa60-coupon-admin.css?v=20261112-1" />
+    <link rel="stylesheet" href="../assets/css/festa60-coupon-admin.css?v=20261112-2" />
     <script src="../assets/js/festa60-admin.js?v=20261103-1" defer></script>
     <script type="module" src="../assets/js/festa60-video-stats.js?v=20261111-1"></script>
     <script type="module" src="../assets/js/festa60-page-stats.js?v=20261111-2"></script>
-    <script type="module" src="../assets/js/festa60-coupon-admin.js?v=20261112-2"></script>
+    <script type="module" src="../assets/js/festa60-coupon-admin.js?v=20261112-3"></script>
   </head>
   <body class="admin-page">
     <div id="environment-banner" class="admin-environment" hidden>TEST環境 / Cloudflare Pages Preview / 本番データではありません</div>
@@ -244,6 +244,60 @@
             <p>発行したコード</p>
             <output class="coupon-admin__issued-code" data-coupon-issued-code tabindex="-1"></output>
             <button class="admin-button" type="button" data-coupon-issued-copy>コードをコピー</button>
+          </div>
+        </div>
+        <div class="admin-panel coupon-admin__bulk-panel" data-coupon-bulk-panel>
+          <div data-coupon-bulk-issue hidden>
+          <h3>ランダムコードをまとめて発行</h3>
+          <p class="coupon-admin__note">指定した枚数の、1回限り使えるコードを発行します。発行後の一覧をまとめてコピーできます。</p>
+          <form data-coupon-bulk-create>
+            <fieldset class="coupon-admin__fields" data-coupon-lock>
+              <legend class="visually-hidden">一括発行するクーポンの内容</legend>
+              <div class="coupon-admin__grid">
+                <div class="admin-field">
+                  <label for="coupon-bulk-count">発行枚数（1〜100枚）</label>
+                  <input id="coupon-bulk-count" name="count" type="number" min="1" max="100" step="1" value="10" required inputmode="numeric" />
+                </div>
+                <div class="admin-field">
+                  <label for="coupon-bulk-label">管理メモ（任意・80文字まで）</label>
+                  <input id="coupon-bulk-label" name="label" maxlength="80" autocomplete="off" />
+                </div>
+                <div class="admin-field">
+                  <label for="coupon-bulk-starts">適用開始（任意・日本時間）</label>
+                  <input id="coupon-bulk-starts" name="starts_at" type="datetime-local" step="1" />
+                </div>
+                <div class="admin-field">
+                  <label for="coupon-bulk-expires">有効期限（必須・日本時間）</label>
+                  <input id="coupon-bulk-expires" name="expires_at" type="datetime-local" step="1" required />
+                </div>
+              </div>
+              <button class="admin-button admin-button--primary" type="submit">まとめてランダム発行</button>
+            </fieldset>
+          </form>
+          <button class="admin-button" type="button" data-coupon-bulk-retry hidden>同じ発行結果を確認する</button>
+          </div>
+          <p class="admin-message" role="status" aria-live="polite" data-coupon-bulk-message hidden></p>
+          <div class="coupon-admin__bulk-history">
+            <div class="coupon-admin__list-heading">
+              <h4>最近の一括発行</h4>
+              <button class="admin-button" type="button" data-coupon-bulk-history-refresh>履歴を更新</button>
+            </div>
+            <p class="coupon-admin__note">直近20件から発行済みのコード一覧を表示・コピーできます。有効期限は発行時の記録です。現在の使用状況・期限は下のクーポン一覧で確認できます。</p>
+            <p class="admin-message" role="status" aria-live="polite" data-coupon-bulk-history-message>一括発行の履歴を取得しています。</p>
+            <div class="coupon-admin__bulk-history-controls" data-coupon-bulk-history-values hidden>
+              <div class="admin-field">
+                <label for="coupon-bulk-history-select">発行履歴</label>
+                <select id="coupon-bulk-history-select" data-coupon-bulk-history-select></select>
+              </div>
+              <button class="admin-button" type="button" data-coupon-bulk-history-show>コード一覧を表示</button>
+            </div>
+          </div>
+          <div class="coupon-admin__bulk-result" data-coupon-bulk-result hidden>
+            <h4>発行したコード一覧</h4>
+            <p data-coupon-bulk-summary></p>
+            <label class="visually-hidden" for="coupon-bulk-codes">一括発行したコード（1行に1コード）</label>
+            <textarea id="coupon-bulk-codes" class="coupon-admin__bulk-codes" data-coupon-bulk-codes rows="8" readonly spellcheck="false"></textarea>
+            <button class="admin-button" type="button" data-coupon-bulk-copy>一覧をコピー</button>
           </div>
         </div>
         <div class="coupon-admin__list-heading"><h3>発行済みクーポン</h3><p data-coupon-count>取得中</p></div>

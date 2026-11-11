@@ -41,12 +41,17 @@ const implementedApiRouteSet = new Set(
     .map((match) => match[1].replace(/\/:[^/]+/g, "/*"))
 );
 if (worker.includes('pathname === "/api/contact"')) implementedApiRouteSet.add("/api/contact");
-const implementedApiRoutes = [...implementedApiRouteSet].sort();
+// A configured splat covers literal child handlers too. Pages rejects a
+// redundant literal alongside that splat, even though the Worker routes differ.
+const implementedApiRoutes = [...implementedApiRouteSet].filter((route) =>
+  ![...implementedApiRouteSet].some((pattern) => pattern.endsWith("/*") && pattern !== route && route.startsWith(pattern.slice(0, -1)))
+).sort();
 const configuredApiRoutes = routes.include.filter((route) => route.startsWith("/api/")).sort();
 
 const checks = [
   ["public pages and assets bypass Pages Functions", !routes.include.includes("/*") && !routes.include.some((route) => route.startsWith("/assets/"))],
   ["Pages Functions routes contain only known APIs and protected pages", JSON.stringify(routes.include) === JSON.stringify(expectedFunctionRoutes)],
+  ["Pages Functions patterns do not overlap", !routes.include.some((pattern) => pattern.endsWith("/*") && routes.include.some((route) => route !== pattern && route.startsWith(pattern.slice(0, -1))))],
   ["every implemented API has a Pages Functions route", JSON.stringify(configuredApiRoutes) === JSON.stringify(implementedApiRoutes)],
   ["staging sends a noindex response header", /X-Robots-Tag:\s*noindex,\s*nofollow,\s*noarchive/i.test(stagingHeaders)],
   ["staging robots disallows crawling", /User-agent:\s*\*/i.test(stagingRobots) && /Disallow:\s*\//i.test(stagingRobots)],

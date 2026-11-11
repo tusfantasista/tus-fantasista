@@ -1,6 +1,6 @@
 import { handleContactRequest } from "./contact-api.js";
 import { enforceRateLimit, publicSummaryCacheKey } from "./cloudflare-protection.js";
-import { resolveEarlyCoupon, onRequestCoupon, onRequestAdminCoupons, reserveCoupon,
+import { resolveEarlyCoupon, onRequestCoupon, onRequestAdminCoupons, onRequestAdminCouponBatch, reserveCoupon,
   bindCouponPreview, markCouponUsed, releaseCouponReservation } from "./festa60-coupons.js";
 import { couponPermissions } from "./festa60-coupon-access.js";
 import { onRequestPageEvents, readPageStats } from "./festa60-page-metrics.js";
@@ -4320,6 +4320,12 @@ async function onRequestPageStats({ request, env }) {
 }
 
 async function onRequestCouponAdmin(context) {
+  return authorizeCouponAdmin(context, onRequestAdminCoupons);
+}
+async function onRequestCouponBatchAdmin(context) {
+  return authorizeCouponAdmin(context, onRequestAdminCouponBatch);
+}
+async function authorizeCouponAdmin(context, handler) {
   const admin = assertAdmin(context.request, context.env);
   if (!admin.ok) return admin.response;
   const permissions = couponPermissions(context.request, context.env);
@@ -4327,7 +4333,7 @@ async function onRequestCouponAdmin(context) {
     return json({ ok: false, error: "coupon_issuer_required", message: "クーポンの発行・変更は発券担当者のみ操作できます。" }, { status: 403 });
   }
   try {
-    const response = await onRequestAdminCoupons({ ...context, actor: admin.actor });
+    const response = await handler({ ...context, actor: admin.actor });
     if (context.request.method === "GET") {
       return json({ ...await response.json(), permissions }, { status: response.status });
     }
@@ -4396,6 +4402,7 @@ __name(constantTimeEqual3, "constantTimeEqual");
 
 // ../../../../Users/nakatsu/Documents/Codex/2026-05-18/github-pages-https-tusfantasista-github-io/.wrangler/tmp/pages-RPGt9O/functionsRoutes-0.22154614749156643.mjs
 var routes = [
+  { routePath: "/api/festa60/admin/coupons/batch", mountPath: "/api/festa60/admin/coupons", method: "", middlewares: [], modules: [onRequestCouponBatchAdmin] },
   { routePath: "/api/festa60/admin/coupons", mountPath: "/api/festa60/admin", method: "", middlewares: [], modules: [onRequestCouponAdmin] },
   { routePath: "/api/festa60/admin/coupons/:id", mountPath: "/api/festa60/admin/coupons", method: "", middlewares: [], modules: [onRequestCouponAdmin] },
   { routePath: "/api/festa60/coupon", mountPath: "/api/festa60", method: "", middlewares: [], modules: [onRequestCoupon] },

@@ -43,6 +43,7 @@ jobs:
           node scripts/test-festa60-coupons.mjs
           node scripts/test-festa60-crm-coupons.mjs
           node scripts/test-festa60-coupon-admin.mjs
+          node scripts/test-festa60-coupon-batches.mjs
           node scripts/test-festa60-coupon-redemptions.mjs
           node scripts/test-festa60-coupon-access.mjs
           node scripts/test-festa60-single-coupon-flow.mjs

@@ -49,6 +49,16 @@ function validCoupon(coupon) {
     && (coupon.application_code === undefined || coupon.application_code === null || typeof coupon.application_code === "string");
 }
 
+function validBatch(batch) {
+  return batch && typeof batch.batch_id === "string" && batch.batch_id.length > 0 && batch.batch_id.length <= 200
+    && Number.isInteger(batch.count) && batch.count >= 1 && batch.count <= 100
+    && Array.isArray(batch.codes) && batch.codes.length === batch.count && new Set(batch.codes).size === batch.count
+    && batch.codes.every((code) => typeof code === "string" && code.length > 0 && code.length <= 64)
+    && Number.isFinite(Date.parse(batch.expires_at)) && Number.isFinite(Date.parse(batch.created_at))
+    && (!batch.starts_at || Number.isFinite(Date.parse(batch.starts_at)))
+    && (batch.label === undefined || batch.label === null || typeof batch.label === "string");
+}
+
 function formatDate(value, empty = "指定なし（発行後から）") {
   return value ? dateFormatter.format(new Date(value)) : empty;
 }
@@ -93,7 +103,15 @@ async function requestApi(method, path = "", payload) {
       throw requestError(typeof result?.message === "string" ? result.message.slice(0, 300) : fallback,
         response.status, result?.error, method !== "GET" && (!result || response.status >= 500));
     }
-    if (method === "GET" ? !Array.isArray(result.coupons) || !result.coupons.every(validCoupon) : !validCoupon(result.coupon)) {
+    const valid = path === "/batch"
+      ? method === "GET"
+        ? Array.isArray(result.batches) && result.batches.length <= 20 && result.batches.every(validBatch)
+        : typeof result.batch_id === "string" && result.batch_id.length > 0 && typeof result.replayed === "boolean"
+          && Array.isArray(result.coupons) && result.coupons.length === payload.count && result.coupons.every(validCoupon)
+          && new Set(result.coupons.map((coupon) => coupon.id)).size === payload.count
+          && new Set(result.coupons.map((coupon) => coupon.code)).size === payload.count
+      : method === "GET" ? Array.isArray(result.coupons) && result.coupons.every(validCoupon) : validCoupon(result.coupon);
+    if (!valid) {
       throw requestError("処理結果を確認できませんでした。一覧を更新して内容を確認してください。", response.status, "invalid_response", method !== "GET");
     }
     return result;
@@ -130,20 +148,47 @@ export function initCouponAdmin(root) {
   const issuedCopy = root.querySelector("[data-coupon-issued-copy]");
   const generateButton = root.querySelector("[data-coupon-generate]");
   const generatedMessage = root.querySelector("[data-coupon-generated]");
+  const bulkPanel = root.querySelector("[data-coupon-bulk-panel]");
+  const bulkIssue = root.querySelector("[data-coupon-bulk-issue]");
+  const bulkForm = root.querySelector("[data-coupon-bulk-create]");
+  const bulkMessage = root.querySelector("[data-coupon-bulk-message]");
+  const bulkRetry = root.querySelector("[data-coupon-bulk-retry]");
+  const bulkResult = root.querySelector("[data-coupon-bulk-result]");
+  const bulkSummary = root.querySelector("[data-coupon-bulk-summary]");
+  const bulkCodes = root.querySelector("[data-coupon-bulk-codes]");
+  const bulkCopy = root.querySelector("[data-coupon-bulk-copy]");
+  const historyRefresh = root.querySelector("[data-coupon-bulk-history-refresh]");
+  const historyMessage = root.querySelector("[data-coupon-bulk-history-message]");
+  const historyValues = root.querySelector("[data-coupon-bulk-history-values]");
+  const historySelect = root.querySelector("[data-coupon-bulk-history-select]");
+  const historyShow = root.querySelector("[data-coupon-bulk-history-show]");
   const cards = new Map();
   let busy = false;
   let needsRefresh = false;
+  let bulkPending = null;
+  let bulkUncertain = false;
+  let historyLoading = false;
+  let historyRevision = 0;
+  let batches = [];
   let permissions = { can_issue: false, can_manage: false };
 
   function updateControls() {
     root.setAttribute("aria-busy", String(busy));
     refreshButton.disabled = busy;
     createPanel.hidden = !permissions.can_issue;
-    if (generateButton) generateButton.disabled = busy || needsRefresh || !permissions.can_issue;
-    const issueControls = new Set(createForm.querySelectorAll("[data-coupon-lock]"));
+    if (generateButton) generateButton.disabled = busy || needsRefresh || bulkUncertain || !permissions.can_issue;
+    if (bulkIssue) bulkIssue.hidden = !permissions.can_issue;
+    if (bulkRetry) {
+      bulkRetry.hidden = !bulkUncertain;
+      bulkRetry.disabled = busy || needsRefresh || !permissions.can_issue;
+    }
+    if (historyShow) historyShow.disabled = busy || bulkUncertain || batches.length === 0;
+    if (bulkCopy) bulkCopy.disabled = busy || bulkUncertain || !bulkCodes?.value;
+    const issueControls = new Set([...createForm.querySelectorAll("[data-coupon-lock]"),
+      ...(bulkForm?.querySelectorAll("[data-coupon-lock]") || [])]);
     for (const control of root.querySelectorAll("[data-coupon-lock]")) {
       const allowed = issueControls.has(control) ? permissions.can_issue : permissions.can_manage;
-      control.disabled = busy || needsRefresh || !allowed;
+      control.disabled = busy || needsRefresh || bulkUncertain || !allowed;
     }
     for (const editor of root.querySelectorAll("[data-coupon-editor]")) editor.hidden = !permissions.can_manage;
     for (const toggle of root.querySelectorAll("[data-coupon-toggle]")) toggle.hidden = !permissions.can_manage;
@@ -164,10 +209,11 @@ export function initCouponAdmin(root) {
       setMessage(message, "コピーできませんでした。表示されているコードを選択してコピーしてください。", true);
     } finally {
       button.disabled = false;
+      if (button === bulkCopy) updateControls();
     }
   }
 
-  function upsertCoupon(coupon, prepend = false) {
+  function upsertCoupon(coupon, prepend = false, syncControls = true) {
     const next = renderCard(coupon);
     const previous = cards.get(coupon.id);
     if (previous) previous.replaceWith(next);
@@ -177,7 +223,7 @@ export function initCouponAdmin(root) {
     count.textContent = `${cards.size.toLocaleString("ja-JP")}件`;
     list.hidden = false;
     setMessage(listMessage, "");
-    updateControls();
+    if (syncControls) updateControls();
     return next;
   }
 
@@ -278,7 +324,7 @@ export function initCouponAdmin(root) {
     copy.addEventListener("click", () => copyCode(coupon.code, copy, message));
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
-      if (busy || needsRefresh || !permissions.can_manage || !form.reportValidity()) return;
+      if (busy || needsRefresh || bulkUncertain || !permissions.can_manage || !form.reportValidity()) return;
       let payload;
       try {
         payload = { label: label.value.trim(), starts_at: starts.value ? japanLocalToIso(starts.value) : null,
@@ -292,7 +338,7 @@ export function initCouponAdmin(root) {
       await mutateCoupon(coupon, payload, card, "クーポンを更新しました。");
     });
     toggle?.addEventListener("click", async () => {
-      if (busy || needsRefresh || !permissions.can_manage) return;
+      if (busy || needsRefresh || bulkUncertain || !permissions.can_manage) return;
       await mutateCoupon(coupon, { enabled: Boolean(coupon.disabled_at), expected_updated_at: coupon.updated_at }, card,
         coupon.disabled_at ? "停止を解除しました。有効期間をご確認ください。" : "クーポンの利用を停止しました。");
     });
@@ -300,7 +346,7 @@ export function initCouponAdmin(root) {
   }
 
   async function mutateCoupon(coupon, payload, card, successMessage) {
-    if (!permissions.can_manage) return;
+    if (busy || needsRefresh || bulkUncertain || !permissions.can_manage) return;
     busy = true;
     updateControls();
     const message = card.querySelector('[role="status"]');
@@ -357,7 +403,7 @@ export function initCouponAdmin(root) {
 
   createForm.addEventListener("submit", async (event) => {
     event.preventDefault();
-    if (busy || needsRefresh || !permissions.can_issue || !createForm.reportValidity()) return;
+    if (busy || needsRefresh || bulkUncertain || !permissions.can_issue || !createForm.reportValidity()) return;
     const field = (name) => createForm.elements.namedItem(name).value.trim();
     let payload;
     try {
@@ -397,7 +443,7 @@ export function initCouponAdmin(root) {
     }
   });
   generateButton?.addEventListener("click", () => {
-    if (busy || needsRefresh || !permissions.can_issue) return;
+    if (busy || needsRefresh || bulkUncertain || !permissions.can_issue) return;
     const message = generatedMessage || createMessage;
     try {
       if (typeof globalThis.crypto?.getRandomValues !== "function") throw new Error("secure_random_unavailable");
@@ -411,9 +457,132 @@ export function initCouponAdmin(root) {
       setMessage(message, "安全なランダムコードを生成できませんでした。対応するブラウザでお試しいただくか、コードを手動で入力してください。", true);
     }
   });
+  function renderBatchHistory(selectedId = historySelect?.value) {
+    if (!historySelect) return;
+    historySelect.replaceChildren(...batches.map((batch) => {
+      const option = element("option", "", `${formatDate(batch.created_at)} / ${batch.count}枚${batch.label ? ` / ${batch.label}` : ""}`);
+      option.value = batch.batch_id;
+      return option;
+    }));
+    if (batches.some((batch) => batch.batch_id === selectedId)) historySelect.value = selectedId;
+    else historySelect.value = batches[0]?.batch_id || "";
+    historyValues.hidden = batches.length === 0;
+    historyShow.disabled = busy || bulkUncertain || batches.length === 0;
+  }
+
+  function showBatch(batch, replayed = false) {
+    bulkCodes.value = batch.codes.join("\n");
+    bulkSummary.textContent = `${batch.count}枚${replayed ? "（保存済みの発行結果）" : ""} / 発行時の有効期限 ${formatDate(batch.expires_at)}（日本時間）${batch.label ? ` / ${batch.label}` : ""}`;
+    bulkResult.hidden = false;
+    bulkCodes.focus({ preventScroll: true });
+  }
+
+  async function loadBatchHistory() {
+    if (!historyRefresh || historyLoading) return;
+    historyLoading = true;
+    const revision = historyRevision;
+    historyRefresh.disabled = true;
+    setMessage(historyMessage, "一括発行の履歴を取得しています。");
+    try {
+      const result = await requestApi("GET", "/batch");
+      batches = revision === historyRevision ? result.batches
+        : [...new Map([...result.batches, ...batches].map((batch) => [batch.batch_id, batch])).values()]
+          .sort((left, right) => Date.parse(right.created_at) - Date.parse(left.created_at)).slice(0, 20);
+      renderBatchHistory();
+      setMessage(historyMessage, batches.length ? "" : "一括発行の履歴はまだありません。");
+    } catch (error) {
+      setMessage(historyMessage, `履歴を取得できませんでした。${batches.length ? " 表示は前回取得した内容です。" : ""}「履歴を更新」から再確認してください。`, true);
+    } finally {
+      historyLoading = false;
+      historyRefresh.disabled = false;
+    }
+  }
+
+  async function issueBulk() {
+    if (!bulkPending || busy || needsRefresh || !permissions.can_issue) return;
+    busy = true;
+    bulkResult.hidden = true;
+    updateControls();
+    setMessage(bulkMessage, bulkUncertain ? "同じ発行依頼の結果を確認しています。" : "クーポンをまとめて発行しています。");
+    try {
+      const result = await requestApi("POST", "/batch", bulkPending.payload);
+      const batch = { batch_id: result.batch_id, count: result.coupons.length, label: bulkPending.payload.label || "",
+        starts_at: bulkPending.payload.starts_at || null, expires_at: bulkPending.payload.expires_at,
+        created_at: result.coupons[0].created_at || bulkPending.createdAt, codes: result.coupons.map((coupon) => coupon.code) };
+      bulkUncertain = false;
+      historyRevision += 1;
+      for (const coupon of [...result.coupons].reverse()) upsertCoupon(coupon, true, false);
+      batches = [batch, ...batches.filter((previous) => previous.batch_id !== batch.batch_id)].slice(0, 20);
+      renderBatchHistory(batch.batch_id);
+      setMessage(historyMessage, "");
+      showBatch(batch, result.replayed);
+      setMessage(bulkMessage, result.replayed
+        ? `${batch.count}枚の保存済みコードを復元しました。新しいコードは追加発行していません。`
+        : `${batch.count}枚を発行しました。下の一覧をコピーできます。`);
+      // A completed operation is deliberate and final. A later submit may issue
+      // another batch with identical settings; only uncertain outcomes reuse IDs.
+      bulkPending = null;
+    } catch (error) {
+      if (error.status === 401 || error.status === 403) {
+        permissions = { can_issue: false, can_manage: false };
+        setMessage(listMessage, error.message, true);
+      }
+      if (error.uncertain) {
+        bulkUncertain = true;
+        setMessage(bulkMessage, "発行結果を確認できませんでした。入力内容を保持しています。「同じ発行結果を確認する」を押すと、同じ依頼を再確認してコードを復元します。", true);
+      } else {
+        if (error.code === "coupon_batch_conflict") {
+          needsRefresh = true;
+          bulkUncertain = false;
+          bulkPending = null;
+        }
+        setMessage(bulkMessage, error.message, true);
+      }
+    } finally {
+      busy = false;
+      updateControls();
+    }
+  }
+
+  bulkForm?.addEventListener("input", () => {
+    if (!busy && !bulkUncertain) bulkPending = null;
+  });
+  bulkForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (busy || needsRefresh || bulkUncertain || !permissions.can_issue || !bulkForm.reportValidity()) return;
+    const field = (name) => bulkForm.elements.namedItem(name).value.trim();
+    try {
+      const count = Number(field("count"));
+      if (!Number.isInteger(count) || count < 1 || count > 100) throw new Error("発行枚数は1〜100枚の整数で指定してください。");
+      const payload = { count, expires_at: japanLocalToIso(field("expires_at")) };
+      if (field("starts_at")) payload.starts_at = japanLocalToIso(field("starts_at"));
+      if (field("label")) payload.label = field("label");
+      if (payload.label?.length > 80) throw new Error("管理メモは80文字以内で入力してください。");
+      if (payload.starts_at && Date.parse(payload.starts_at) >= Date.parse(payload.expires_at)) throw new Error("有効期限は適用開始より後にしてください。");
+      const key = JSON.stringify(payload);
+      if (!bulkPending || bulkPending.key !== key) {
+        if (typeof globalThis.crypto?.randomUUID !== "function") throw new Error("安全な発行依頼IDを作成できませんでした。対応するブラウザでお試しください。");
+        bulkPending = { key, payload: { ...payload, request_id: globalThis.crypto.randomUUID() }, createdAt: new Date().toISOString() };
+      }
+      await issueBulk();
+    } catch (error) {
+      setMessage(bulkMessage, error.message, true);
+    }
+  });
+  bulkRetry?.addEventListener("click", () => bulkUncertain && issueBulk());
+  bulkCopy?.addEventListener("click", () => {
+    if (!busy && !bulkUncertain) return copyCode(bulkCodes.value, bulkCopy, bulkMessage);
+  });
+  historyShow?.addEventListener("click", () => {
+    if (busy || bulkUncertain) return;
+    const batch = batches.find((entry) => entry.batch_id === historySelect.value);
+    if (batch) showBatch(batch, true);
+  });
+  historyRefresh?.addEventListener("click", loadBatchHistory);
   issuedCopy.addEventListener("click", () => copyCode(issuedCode.textContent, issuedCopy, createMessage));
   refreshButton.addEventListener("click", loadCoupons);
   loadCoupons();
+  if (bulkPanel) loadBatchHistory();
 }
 
 if (typeof document !== "undefined") {

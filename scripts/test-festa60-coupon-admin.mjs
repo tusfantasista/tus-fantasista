@@ -79,7 +79,7 @@ function makeNode(tag, attr) {
   return node;
 }
 
-function fixture({ generation = true } = {}) {
+function fixture({ generation = true, bulk = false } = {}) {
   const root = makeNode("section", "data-coupon-admin");
   const createPanel = makeNode("div", "data-coupon-create-panel");
   const form = makeNode("form", "data-coupon-create");
@@ -100,7 +100,30 @@ function fixture({ generation = true } = {}) {
     ["p", "data-coupon-create-message"], ["p", "data-coupon-count"], ["p", "data-coupon-updated"],
     ["div", "data-coupon-issued"], ["output", "data-coupon-issued-code"], ["button", "data-coupon-issued-copy"],
     ["p", "data-coupon-permission-message"]]) root.append(makeNode(tag, attr));
-  return { root, form, fieldset, find: (attr) => root.querySelector(`[${attr}]`), field: (name) => form.elements.namedItem(name) };
+  let bulkForm;
+  if (bulk) {
+    const panel = makeNode("div", "data-coupon-bulk-panel");
+    const issue = makeNode("div", "data-coupon-bulk-issue");
+    bulkForm = makeNode("form", "data-coupon-bulk-create");
+    const bulkFields = makeNode("fieldset", "data-coupon-lock");
+    for (const name of ["count", "label", "starts_at", "expires_at"]) {
+      const input = makeNode("input");
+      input.name = name;
+      input.required = ["count", "expires_at"].includes(name);
+      if (name === "count") input.value = "10";
+      bulkFields.append(input);
+    }
+    bulkForm.append(bulkFields);
+    issue.append(bulkForm, makeNode("button", "data-coupon-bulk-retry"));
+    panel.append(issue);
+    for (const [tag, attr] of [["p", "data-coupon-bulk-message"], ["div", "data-coupon-bulk-result"],
+      ["p", "data-coupon-bulk-summary"], ["textarea", "data-coupon-bulk-codes"], ["button", "data-coupon-bulk-copy"],
+      ["button", "data-coupon-bulk-history-refresh"], ["p", "data-coupon-bulk-history-message"],
+      ["div", "data-coupon-bulk-history-values"], ["select", "data-coupon-bulk-history-select"], ["button", "data-coupon-bulk-history-show"]]) panel.append(makeNode(tag, attr));
+    root.append(panel);
+  }
+  return { root, form, fieldset, bulkForm, bulkField: (name) => bulkForm.elements.namedItem(name),
+    find: (attr) => root.querySelector(`[${attr}]`), field: (name) => form.elements.namedItem(name) };
 }
 
 const originalDocument = globalThis.document;
@@ -111,16 +134,22 @@ const requests = [];
 const responses = [];
 const copied = [];
 let randomCalls = 0;
+let uuidCalls = 0;
 const localCrypto = { getRandomValues(bytes) {
   assert.equal(bytes.byteLength, 8, "generation uses 64 bits of secure random data");
   randomCalls += 1;
   for (let index = 0; index < bytes.length; index += 1) bytes[index] = (randomCalls - 1) * 16 + index;
   return bytes;
-} };
+}, randomUUID() { uuidCalls += 1; return `11111111-1111-4111-8111-${uuidCalls.toString(16).padStart(12, "0")}`; } };
 const tick = async () => { await new Promise((resolve) => setImmediate(resolve)); };
 const response = (body, status = 200) => ({ ok: status < 400, status, async json() { return body; } });
 const listResponse = (coupons, permissions = { can_issue: true, can_manage: true }) => response({ ok: true, coupons, permissions });
 const successResponse = (value, status = 200) => response({ ok: true, coupon: value }, status);
+const historyResponse = (batches) => response({ ok: true, batches });
+const batchResponse = (coupons, batchId, replayed = false) => response({ ok: true, batch_id: batchId, coupons, replayed }, replayed ? 200 : 201);
+const batchCoupons = (count, suffix) => Array.from({ length: count }, (_, index) => ({ ...coupon,
+  id: `bulk-${suffix}-${index}`, code: `F60-${suffix.toUpperCase()}${String(index).padStart(12, "0")}`,
+  usage_state: "unused", reserved_at: null, used_at: null, application_code: null }));
 let ui;
 try {
   globalThis.document = { createElement: (tag) => new Node(tag), querySelector: () => null };
@@ -130,7 +159,7 @@ try {
     requests.push({ url, options, body: options.body ? JSON.parse(options.body) : undefined });
     assert.equal(options.credentials, "same-origin");
     assert.equal(options.cache, "no-store");
-    assert.match(url, /^\/api\/festa60\/admin\/coupons(?:\/coupon-ui-test)?$/);
+    assert.match(url, /^\/api\/festa60\/admin\/coupons(?:\/(?:coupon-ui-test|batch))?$/);
     assert.ok(responses.length, "all requests have a local response; no external requests are allowed");
     const result = responses.shift();
     if (result instanceof Error) throw result;
@@ -377,11 +406,168 @@ try {
   assert.equal(unauthenticated.fieldset.disabled, true);
   assert.equal(unauthenticated.find("data-coupon-refresh").disabled, false);
 
+  responses.push(listResponse([]), historyResponse([]));
+  const bulkUi = fixture({ bulk: true });
+  initCouponAdmin(bulkUi.root);
+  assert.equal(bulkUi.find("data-coupon-bulk-issue").hidden, true);
+  await tick();
+  assert.equal(bulkUi.find("data-coupon-bulk-issue").hidden, false);
+  assert.equal(bulkUi.bulkField("count").value, "10");
+  assert.match(bulkUi.find("data-coupon-bulk-history-message").textContent, /まだありません/);
+  const beforeBulkValidation = requests.length;
+  await bulkUi.bulkForm.emit("submit");
+  for (const count of ["0", "101", "1.5", "invalid"]) {
+    bulkUi.bulkField("count").value = count;
+    bulkUi.bulkField("expires_at").value = "2027-01-31T23:59:59";
+    await bulkUi.bulkForm.emit("submit");
+    assert.match(bulkUi.find("data-coupon-bulk-message").textContent, /1〜100枚の整数/);
+  }
+  assert.equal(requests.length, beforeBulkValidation, "invalid counts and missing expiry never issue requests");
+  bulkUi.bulkField("count").value = "2";
+  bulkUi.bulkField("label").value = " 検証用一括発行 ";
+  bulkUi.bulkField("starts_at").value = "2026-12-01T09:30:00";
+  let finishBatch;
+  responses.push(new Promise((resolve) => { finishBatch = resolve; }));
+  const firstBatch = bulkUi.bulkForm.emit("submit");
+  await tick();
+  const firstBatchRequest = requests.at(-1);
+  assert.equal(firstBatchRequest.url, "/api/festa60/admin/coupons/batch");
+  assert.equal(firstBatchRequest.body.count, 2);
+  assert.equal(firstBatchRequest.body.label, "検証用一括発行");
+  assert.equal(firstBatchRequest.body.starts_at, "2026-12-01T09:30:00+09:00");
+  assert.equal(firstBatchRequest.body.expires_at, "2027-01-31T23:59:59+09:00");
+  assert.match(firstBatchRequest.body.request_id, /^[a-f0-9-]{36}$/);
+  const beforeDuplicateBatch = requests.length;
+  await bulkUi.bulkForm.emit("submit");
+  await bulkUi.form.emit("submit");
+  assert.equal(requests.length, beforeDuplicateBatch, "shared busy state prevents repeated batch/single requests");
+  assert.equal(bulkUi.fieldset.disabled, true);
+  const twoCoupons = batchCoupons(2, "a001");
+  finishBatch(batchResponse(twoCoupons, "batch-test-1"));
+  await firstBatch;
+  assert.equal(bulkUi.find("data-coupon-bulk-codes").value, twoCoupons.map((entry) => entry.code).join("\n"));
+  assert.match(bulkUi.find("data-coupon-bulk-summary").textContent, /2枚.*発行時の有効期限/);
+  assert.equal(bulkUi.find("data-coupon-list").querySelectorAll("article").length, 2);
+  await bulkUi.find("data-coupon-bulk-copy").emit("click");
+  assert.equal(copied.at(-1), twoCoupons.map((entry) => entry.code).join("\n"), "batch copy contains codes only, one per line");
+
+  let finishSecondBatch;
+  responses.push(new Promise((resolve) => { finishSecondBatch = resolve; }));
+  const secondBatch = bulkUi.bulkForm.emit("submit");
+  await tick();
+  assert.equal(bulkUi.find("data-coupon-bulk-result").hidden, true, "starting another request hides the previous batch result");
+  assert.equal(bulkUi.find("data-coupon-bulk-copy").disabled, true);
+  assert.equal(bulkUi.find("data-coupon-bulk-history-show").disabled, true);
+  const copiesBeforeBusy = copied.length;
+  await bulkUi.find("data-coupon-bulk-history-show").emit("click");
+  await bulkUi.find("data-coupon-bulk-copy").emit("click");
+  assert.equal(bulkUi.find("data-coupon-bulk-result").hidden, true, "direct history events cannot reveal an old result while issuing");
+  assert.equal(copied.length, copiesBeforeBusy, "direct copy events cannot copy a stale result while issuing");
+  const secondCoupons = batchCoupons(2, "a004");
+  finishSecondBatch(batchResponse(secondCoupons, "batch-test-4"));
+  await secondBatch;
+  const secondBatchRequest = requests.at(-1);
+  assert.notEqual(secondBatchRequest.body.request_id, firstBatchRequest.body.request_id,
+    "a deliberate submit after success creates a fresh request even with identical settings");
+  assert.deepEqual({ ...secondBatchRequest.body, request_id: firstBatchRequest.body.request_id }, firstBatchRequest.body);
+  assert.equal(bulkUi.find("data-coupon-list").querySelectorAll("article").length, 4);
+  assert.equal(bulkUi.find("data-coupon-bulk-codes").value, secondCoupons.map((entry) => entry.code).join("\n"),
+    "the second same-settings issue displays newly issued codes");
+  assert.match(bulkUi.find("data-coupon-bulk-message").textContent, /2枚を発行しました/);
+  assert.equal(bulkUi.find("data-coupon-bulk-result").hidden, false);
+  assert.equal(bulkUi.find("data-coupon-bulk-copy").disabled, false);
+
+  bulkUi.bulkField("count").value = "1";
+  await bulkUi.bulkForm.emit("input");
+  responses.push(new TypeError("lost batch response"));
+  await bulkUi.bulkForm.emit("submit");
+  const lostBatchRequest = requests.at(-1);
+  assert.notEqual(lostBatchRequest.body.request_id, firstBatchRequest.body.request_id, "input changes start a new request id");
+  assert.notEqual(lostBatchRequest.body.request_id, secondBatchRequest.body.request_id);
+  assert.equal(bulkUi.bulkForm.querySelector("fieldset").disabled, true);
+  assert.equal(bulkUi.fieldset.disabled, true);
+  assert.equal(bulkUi.find("data-coupon-bulk-retry").hidden, false);
+  assert.equal(bulkUi.find("data-coupon-bulk-retry").disabled, false);
+  assert.equal(bulkUi.find("data-coupon-bulk-result").hidden, true, "an unknown result never leaves the previous batch visible");
+  assert.equal(bulkUi.find("data-coupon-bulk-copy").disabled, true);
+  assert.equal(bulkUi.find("data-coupon-bulk-history-show").disabled, true);
+  const copiesBeforeUnknown = copied.length;
+  await bulkUi.find("data-coupon-bulk-history-show").emit("click");
+  await bulkUi.find("data-coupon-bulk-copy").emit("click");
+  assert.equal(bulkUi.find("data-coupon-bulk-result").hidden, true);
+  assert.equal(copied.length, copiesBeforeUnknown);
+  assert.match(bulkUi.find("data-coupon-bulk-message").textContent, /同じ依頼を再確認/);
+  const beforeUnknownRetries = requests.length;
+  await bulkUi.bulkForm.emit("submit");
+  await bulkUi.find("data-coupon-generate").emit("click");
+  await tick();
+  assert.equal(requests.length, beforeUnknownRetries, "unknown outcomes never auto-retry or abandon the pending batch");
+  responses.push(listResponse([...twoCoupons, ...secondCoupons]));
+  await bulkUi.find("data-coupon-refresh").emit("click");
+  assert.equal(bulkUi.bulkForm.querySelector("fieldset").disabled, true,
+    "refreshing the individual list cannot clear an uncertain bulk request");
+  assert.equal(bulkUi.find("data-coupon-bulk-copy").disabled, true);
+  assert.equal(bulkUi.find("data-coupon-bulk-history-show").disabled, true);
+  bulkUi.bulkField("count").value = "99";
+  const recoveredCoupon = batchCoupons(1, "a002");
+  responses.push(batchResponse(recoveredCoupon, "batch-test-2", true));
+  await bulkUi.find("data-coupon-bulk-retry").emit("click");
+  assert.deepEqual(requests.at(-1).body, lostBatchRequest.body,
+    "result recovery uses the same request id and saved payload even if a field was changed programmatically");
+  assert.equal(bulkUi.find("data-coupon-bulk-retry").hidden, true);
+  assert.equal(bulkUi.bulkForm.querySelector("fieldset").disabled, false);
+  assert.equal(bulkUi.find("data-coupon-bulk-codes").value, recoveredCoupon[0].code);
+  assert.equal(bulkUi.find("data-coupon-bulk-result").hidden, false);
+  assert.equal(bulkUi.find("data-coupon-bulk-copy").disabled, false);
+
+  bulkUi.bulkField("count").value = "100";
+  await bulkUi.bulkForm.emit("input");
+  const hundredCoupons = batchCoupons(100, "a003");
+  responses.push(batchResponse(hundredCoupons, "batch-test-3"));
+  await bulkUi.bulkForm.emit("submit");
+  assert.equal(requests.at(-1).body.count, 100);
+  assert.equal(bulkUi.find("data-coupon-bulk-codes").value.split("\n").length, 100);
+  assert.equal(bulkUi.find("data-coupon-list").querySelectorAll("article").length, 105);
+
+  const savedBatch = { batch_id: "batch-test-history", count: 2, label: "再読み込み後の記録", starts_at: null,
+    expires_at: coupon.expires_at, created_at: coupon.created_at, codes: twoCoupons.map((entry) => entry.code) };
+  responses.push(listResponse(twoCoupons, { can_issue: false, can_manage: false }), historyResponse([savedBatch]));
+  const historyUi = fixture({ bulk: true });
+  initCouponAdmin(historyUi.root);
+  await tick();
+  assert.equal(historyUi.find("data-coupon-bulk-issue").hidden, true, "bulk issuing follows the same issuer permission");
+  assert.equal(historyUi.find("data-coupon-bulk-history-values").hidden, false);
+  await historyUi.find("data-coupon-bulk-history-show").emit("click");
+  assert.equal(historyUi.find("data-coupon-bulk-codes").value, savedBatch.codes.join("\n"), "history restores complete code lists after a reload");
+  assert.match(historyUi.find("data-coupon-bulk-summary").textContent, /発行時の有効期限/);
+  await historyUi.find("data-coupon-bulk-copy").emit("click");
+  assert.equal(copied.at(-1), savedBatch.codes.join("\n"), "all CRM viewers may copy existing batch codes");
+  const beforeReadOnlyBatch = requests.length;
+  historyUi.bulkField("expires_at").value = "2027-01-31T23:59";
+  await historyUi.bulkForm.emit("submit");
+  assert.equal(requests.length, beforeReadOnlyBatch);
+
+  responses.push(listResponse([]), response({ ok: false, error: "coupon_configuration_error" }, 503));
+  const failedHistoryUi = fixture({ bulk: true });
+  initCouponAdmin(failedHistoryUi.root);
+  await tick();
+  assert.match(failedHistoryUi.find("data-coupon-bulk-history-message").textContent, /履歴を取得できません/);
+  assert.equal(failedHistoryUi.fieldset.disabled, false, "history failures never block individual issuing");
+  assert.equal(failedHistoryUi.bulkForm.querySelector("fieldset").disabled, false);
+  failedHistoryUi.bulkField("expires_at").value = "2027-01-31T23:59";
+  Object.defineProperty(globalThis, "crypto", { configurable: true, value: {} });
+  const beforeNoCryptoBatch = requests.length;
+  await failedHistoryUi.bulkForm.emit("submit");
+  assert.match(failedHistoryUi.find("data-coupon-bulk-message").textContent, /安全な発行依頼ID/);
+  assert.equal(requests.length, beforeNoCryptoBatch);
+  Object.defineProperty(globalThis, "crypto", { configurable: true, value: localCrypto });
+
   assert.equal(responses.length, 0);
-  assert.equal(requests.filter((request) => request.options.method === "POST").length, 5);
+  assert.equal(requests.filter((request) => request.options.method === "POST" && !request.url.endsWith("/batch")).length, 5);
+  assert.equal(requests.filter((request) => request.options.method === "POST" && request.url.endsWith("/batch")).length, 5);
   const source = await readFile(new URL("../public/assets/js/festa60-coupon-admin.js", import.meta.url), "utf8");
   assert.doesNotMatch(source, /innerHTML|outerHTML|insertAdjacentHTML|localStorage|sessionStorage|document\.cookie/);
-  console.log("PASS coupon admin: secure random preview without issuance, Japan-time dates, issue/copy/edit/stop/resume, single-use usage, legacy compatibility, issuer permissions, stale guards, duplicate prevention, safe text and error states; no external calls");
+  console.log("PASS coupon admin: random preview, Japan-time dates, single-use management, issuer permissions, bulk 1-100/code-only copy, idempotent duplicate/recovery, independent history/read-only restore, stale guards and safe errors; no external calls");
 } finally {
   if (originalDocument === undefined) delete globalThis.document;
   else globalThis.document = originalDocument;
