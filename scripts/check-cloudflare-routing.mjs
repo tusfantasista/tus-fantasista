@@ -6,10 +6,12 @@ const expectedApiRoutes = [
   "/api/festa60/admin/applications/*",
   "/api/festa60/admin/export",
   "/api/festa60/admin/import",
+  "/api/festa60/admin/video-stats",
   "/api/festa60/stripe/webhook",
   "/api/festa60/applications",
   "/api/festa60/config",
   "/api/festa60/public-summary",
+  "/api/festa60/video-events",
   "/api/stripe/webhook",
 ];
 const expectedProtectedRoutes = [

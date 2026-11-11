@@ -4089,6 +4089,83 @@ async function onRequestPost8() {
 }
 __name(onRequestPost8, "onRequestPost");
 
+async function onRequestVideoEvents({ request, env }) {
+  if (request.method !== "POST") return methodNotAllowed();
+  const origin = request.headers.get("origin");
+  const sameOrigin = origin
+    ? origin === new URL(request.url).origin
+    : request.headers.get("sec-fetch-site") === "same-origin";
+  if (!sameOrigin) {
+    return json({ ok: false, error: "forbidden" }, { status: 403 });
+  }
+  if (request.headers.get("content-type")?.split(";")[0].trim().toLowerCase() !== "application/json") {
+    return json({ ok: false, error: "unsupported_media_type" }, { status: 415 });
+  }
+  const rateLimited = await enforceRateLimit(request, env, "VIDEO_EVENTS_RATE_LIMITER", "festa60-video-events");
+  if (rateLimited) return rateLimited;
+  const reader = request.body?.getReader();
+  if (!reader) return badRequest("Missing video event.");
+  const decoder = new TextDecoder();
+  let size = 0;
+  let body = "";
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > 1024) {
+        await reader.cancel();
+        return json({ ok: false, error: "payload_too_large" }, { status: 413 });
+      }
+      body += decoder.decode(value, { stream: true });
+    }
+    body += decoder.decode();
+  } catch {
+    return badRequest("Invalid video event.");
+  }
+  let event;
+  try {
+    event = JSON.parse(body);
+  } catch {
+    return badRequest("Invalid video event.");
+  }
+  if (event?.video_id !== "festa60-pr"
+    || typeof event.playback_id !== "string"
+    || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(event.playback_id || "")
+    || !["start", "complete"].includes(event.event)) {
+    return badRequest("Invalid video event.");
+  }
+  try {
+    const now = new Date().toISOString();
+    await requireDb(env).prepare(
+      `INSERT INTO video_playbacks (video_id, playback_id, started_at, completed_at)
+       VALUES (?, ?, ?, CASE WHEN ? = 'complete' THEN ? ELSE NULL END)
+       ON CONFLICT (video_id, playback_id) DO UPDATE SET
+         completed_at = COALESCE(video_playbacks.completed_at, excluded.completed_at)`
+    ).bind(event.video_id, event.playback_id, now, event.event, now).run();
+    return new Response(null, { status: 204, headers: { "cache-control": "no-store" } });
+  } catch (error) {
+    return serverError(error);
+  }
+}
+
+async function onRequestVideoStats({ request, env }) {
+  if (request.method !== "GET") return methodNotAllowed();
+  const admin = assertAdmin(request, env);
+  if (!admin.ok) return admin.response;
+  try {
+    const stats = await requireDb(env).prepare(
+      `SELECT COUNT(*) AS starts, COUNT(completed_at) AS completions,
+              MIN(started_at) AS first_started_at, MAX(started_at) AS last_started_at,
+              MAX(completed_at) AS last_completed_at
+       FROM video_playbacks WHERE video_id = ?`
+    ).bind("festa60-pr").first();
+    return json({ ok: true, stats });
+  } catch (error) {
+    return serverError(error);
+  }
+}
+
 // _middleware.js
 var PROTECTED_PREFIXES = [
   "/apply",
@@ -4148,6 +4225,20 @@ __name(constantTimeEqual3, "constantTimeEqual");
 
 // ../../../../Users/nakatsu/Documents/Codex/2026-05-18/github-pages-https-tusfantasista-github-io/.wrangler/tmp/pages-RPGt9O/functionsRoutes-0.22154614749156643.mjs
 var routes = [
+  {
+    routePath: "/api/festa60/video-events",
+    mountPath: "/api/festa60",
+    method: "",
+    middlewares: [],
+    modules: [onRequestVideoEvents]
+  },
+  {
+    routePath: "/api/festa60/admin/video-stats",
+    mountPath: "/api/festa60/admin",
+    method: "",
+    middlewares: [],
+    modules: [onRequestVideoStats]
+  },
   {
     routePath: "/api/festa60/admin/applications/:id",
     mountPath: "/api/festa60/admin/applications",

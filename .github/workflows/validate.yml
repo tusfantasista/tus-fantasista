@@ -37,12 +37,15 @@ jobs:
           node scripts/check-cloudflare-routing.mjs
           node scripts/check-cloudflare-protection.mjs
           node scripts/test-cloudflare-protection.mjs
+          node scripts/test-festa60-video-metrics.mjs
 
       - name: Check JavaScript syntax
         run: |
           node --check public/_worker.js
           node --check public/assets/js/festa60-register.js
           node --check public/assets/js/site.js
+          node --check public/assets/js/festa60-video-metrics.js
+          node --check public/assets/js/festa60-video-stats.js
           node --check scripts/check-cloudflare-routing.mjs
           node --check scripts/check-cloudflare-protection.mjs
           node --check scripts/test-cloudflare-protection.mjs

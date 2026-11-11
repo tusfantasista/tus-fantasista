@@ -8,6 +8,7 @@
     <title>FESTA 60 申込管理</title>
     <link rel="stylesheet" href="../assets/css/festa60-admin.css?v=20260830-1" />
     <script src="../assets/js/festa60-admin.js?v=20261103-1" defer></script>
+    <script type="module" src="../assets/js/festa60-video-stats.js?v=20261111-1"></script>
   </head>
   <body class="admin-page">
     <div id="environment-banner" class="admin-environment" hidden>TEST環境 / Cloudflare Pages Preview / 本番データではありません</div>
@@ -118,6 +119,29 @@
           <p>申込確定前の入金、未消込残高、確定処理の停滞です。決済管理画面と照合して対応してください。</p>
           <div id="bank-transfer-alerts" class="admin-bank-alert-list"></div>
         </div>
+      </section>
+
+      <section class="admin-list-section" aria-labelledby="video-stats-title" data-video-stats>
+        <div class="admin-section-heading admin-section-heading--actions">
+          <div>
+            <p class="admin-section-label">PR Video</p>
+            <h2 id="video-stats-title">PR動画の再生状況</h2>
+          </div>
+          <button class="admin-button" type="button" data-video-stats-refresh>動画の集計を更新</button>
+        </div>
+        <p class="admin-definition">集計開始以降の回数です。同じページを開いている間は、再生開始・完了をそれぞれ1回数えます。完了は動画の9割以上を再生して最後に到達した場合です。再読み込みや別タブでの再生は別に数えます。</p>
+        <p class="admin-message" role="status" aria-live="polite" data-video-stats-message>動画の再生状況を取得しています。</p>
+        <div class="admin-summary-grid" aria-live="polite" data-video-stats-values hidden>
+          <article class="admin-metric admin-metric--accent">
+            <span>再生開始</span><strong data-video-starts>-</strong>
+            <small data-video-first-start>初回 記録なし</small><small data-video-last-start>最新 記録なし</small>
+          </article>
+          <article class="admin-metric admin-metric--success">
+            <span>再生完了</span><strong data-video-completions>-</strong>
+            <small data-video-last-complete>最新 記録なし</small>
+          </article>
+        </div>
+        <p class="admin-updated" data-video-stats-updated>取得中</p>
       </section>
 
       <section class="admin-list-section" aria-labelledby="applications-title">
