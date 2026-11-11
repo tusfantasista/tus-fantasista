@@ -58,12 +58,29 @@ export async function onRequestPageEvents({ request, env }) {
   }
 }
 
-export async function readPageStats(env) {
-  const rows = await env.DB.prepare(
+export async function readPageStats(env, days = 30, now = new Date()) {
+  if (![7, 30, 90].includes(days)) throw new RangeError("Unsupported page statistics period.");
+  if (!(now instanceof Date) || !Number.isFinite(now.getTime())) throw new RangeError("Invalid statistics date.");
+  const dayMs = 24 * 60 * 60 * 1000;
+  const jstOffset = 9 * 60 * 60 * 1000;
+  const today = new Date(now.getTime() + jstOffset).toISOString().slice(0, 10);
+  const todayLabel = Date.parse(`${today}T00:00:00.000Z`);
+  const firstLabel = todayLabel - (days - 1) * dayMs;
+  const from = new Date(firstLabel).toISOString().slice(0, 10);
+  const lowerBound = new Date(firstLabel - jstOffset).toISOString();
+  const upperBound = new Date(todayLabel + dayMs - jstOffset).toISOString();
+  const [rows, dailyRows] = await Promise.all([
+    env.DB.prepare(
     `SELECT page_id, COUNT(*) AS views,
             MIN(viewed_at) AS first_viewed_at, MAX(viewed_at) AS last_viewed_at
      FROM page_views GROUP BY page_id`
-  ).all();
+    ).all(),
+    env.DB.prepare(
+      `SELECT date(viewed_at, '+9 hours') AS view_date, page_id, COUNT(*) AS views
+       FROM page_views WHERE viewed_at >= ? AND viewed_at < ?
+       GROUP BY view_date, page_id ORDER BY view_date, page_id`
+    ).bind(lowerBound, upperBound).all(),
+  ]);
   const stats = Object.fromEntries(PAGE_IDS.map((id) => [id, {
     views: 0, first_viewed_at: null, last_viewed_at: null,
   }]));
@@ -76,5 +93,18 @@ export async function readPageStats(env) {
       };
     }
   }
+  const timelineRows = Array.from({ length: days }, (_, index) => ({
+    date: new Date(firstLabel + index * dayMs).toISOString().slice(0, 10),
+    home_views: 0,
+    register_views: 0,
+  }));
+  const byDate = new Map(timelineRows.map((row) => [row.date, row]));
+  for (const row of dailyRows.results || []) {
+    const day = byDate.get(row.view_date);
+    if (!day) continue;
+    if (row.page_id === "festa60-home") day.home_views = Number(row.views);
+    if (row.page_id === "festa60-register") day.register_views = Number(row.views);
+  }
+  stats.timeline = { timezone: "Asia/Tokyo", days, from, to: today, rows: timelineRows };
   return stats;
 }

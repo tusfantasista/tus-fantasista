@@ -16,7 +16,10 @@ function environment(configuration = JSON.stringify(validEntries)) {
   const env = { COUPON_RATE_LIMITER: allowLimiter };
   if (configuration !== undefined) env.FESTA60_EARLY_COUPONS = configuration;
   Object.defineProperties(env, {
-    DB: { get() { forbiddenCalls.db += 1; throw new Error("Coupon lookup must not access D1"); } },
+    DB: { value: { prepare(sql) {
+      assert.match(sql, /^SELECT code, starts_at, expires_at, disabled_at FROM festa60_coupons WHERE code = \?/);
+      return { bind() { return { async first() { return null; } }; } };
+    } } },
     STRIPE_SECRET_KEY: { get() { forbiddenCalls.stripe += 1; throw new Error("Coupon lookup must not access Stripe"); } },
   });
   return env;
@@ -56,42 +59,42 @@ async function api(payload, options = {}) {
 // Empty coupons are a no-op even if no codes are configured or the configuration
 // is broken. Clearing the optional field must never block a normal application.
 for (const code of [undefined, null, "", " \t\n　"]) {
-  assert.deepEqual(resolveEarlyCoupon({}, code, "absent_donation_5000"), { ok: true, applied: false, code: "" });
-  assert.deepEqual(resolveEarlyCoupon({ FESTA60_EARLY_COUPONS: "broken" }, code, "obog"), { ok: true, applied: false, code: "" });
+  assert.deepEqual(await resolveEarlyCoupon({}, code, "absent_donation_5000"), { ok: true, applied: false, code: "" });
+  assert.deepEqual(await resolveEarlyCoupon({ FESTA60_EARLY_COUPONS: "broken" }, code, "obog"), { ok: true, applied: false, code: "" });
 }
 
 const success = { ok: true, applied: true, code: TEST_CODE, fee_period: "early" };
-assert.deepEqual(resolve(`  ${TEST_CODE.toLowerCase()}  `), success);
+assert.deepEqual(await resolve(`  ${TEST_CODE.toLowerCase()}  `), success);
 for (const base of ["obog", "obog_6_10", "obog_5_under", "obog_staff", "obog_staff_6_10", "obog_staff_5_under"]) {
   for (const support of ["", "__bronze", "__silver", "__gold", "__platinum"]) {
-    assert.deepEqual(resolve(TEST_CODE, `${base}${support}`), success, `${base}${support} is eligible`);
+    assert.deepEqual(await resolve(TEST_CODE, `${base}${support}`), success, `${base}${support} is eligible`);
   }
 }
-assert.deepEqual(resolve(TEST_CODE, "young_obog"), success, "shared pricing legacy cohort is normalized");
-assert.deepEqual(resolve(TEST_CODE, "premium_gold"), success, "shared pricing legacy support tier is normalized");
+assert.deepEqual(await resolve(TEST_CODE, "young_obog"), success, "shared pricing legacy cohort is normalized");
+assert.deepEqual(await resolve(TEST_CODE, "premium_gold"), success, "shared pricing legacy support tier is normalized");
 for (const ticketType of [
   "absent_donation_5000", "absent_donation_10000", "absent_donation_30000",
   "current_student", "unknown", "__proto__", "constructor", "toString", "", null, 123, ["obog"],
-]) assertFailure(resolve(TEST_CODE, ticketType), "coupon_ineligible");
+]) assertFailure(await resolve(TEST_CODE, ticketType), "coupon_ineligible");
 
 for (const code of [0, false, [TEST_CODE], { code: TEST_CODE }, "a".repeat(65), "with space", "日本語", "ß", "a/b", "a.b"]) {
-  assertFailure(resolve(code), "coupon_invalid");
+  assertFailure(await resolve(code), "coupon_invalid");
 }
 const maxLengthCode = "a".repeat(64);
-assert.deepEqual(resolve(maxLengthCode, "obog", {
+assert.deepEqual(await resolve(maxLengthCode, "obog", {
   env: environment(JSON.stringify([{ code: maxLengthCode, expires_at: expiresAt }])),
 }), { ok: true, applied: true, code: maxLengthCode.toUpperCase(), fee_period: "early" });
 
 for (const env of [{}, { FESTA60_EARLY_COUPONS: undefined }, environment(""), environment("  "), environment("[]")]) {
-  assertFailure(resolve(TEST_CODE, "obog", { env }), "coupon_invalid");
+  assertFailure(await resolve(TEST_CODE, "obog", { env }), "coupon_invalid");
 }
-assertFailure(resolve("UNISSUED-CODE"), "coupon_invalid");
-assertFailure(resolve(TEST_CODE, "obog", { now: "2026-11-11T02:59:59.999Z" }), "coupon_invalid");
-assert.deepEqual(resolve(TEST_CODE, "obog", { now: "2026-11-11T03:00:00.000Z" }), success, "start boundary is inclusive");
-assert.deepEqual(resolve(TEST_CODE, "obog", { now: "2026-11-11T03:59:59.999Z" }), success);
-assertFailure(resolve(TEST_CODE, "obog", { now: "2026-11-11T04:00:00.000Z" }), "coupon_expired");
-assertFailure(resolve(TEST_CODE, "obog", { now: "2026-11-11T04:00:00.001Z" }), "coupon_expired");
-assert.deepEqual(resolve(TEST_CODE, "obog", {
+assertFailure(await resolve("UNISSUED-CODE"), "coupon_invalid");
+assertFailure(await resolve(TEST_CODE, "obog", { now: "2026-11-11T02:59:59.999Z" }), "coupon_invalid");
+assert.deepEqual(await resolve(TEST_CODE, "obog", { now: "2026-11-11T03:00:00.000Z" }), success, "start boundary is inclusive");
+assert.deepEqual(await resolve(TEST_CODE, "obog", { now: "2026-11-11T03:59:59.999Z" }), success);
+assertFailure(await resolve(TEST_CODE, "obog", { now: "2026-11-11T04:00:00.000Z" }), "coupon_expired");
+assertFailure(await resolve(TEST_CODE, "obog", { now: "2026-11-11T04:00:00.001Z" }), "coupon_expired");
+assert.deepEqual(await resolve(TEST_CODE, "obog", {
   env: environment(JSON.stringify([{ code: TEST_CODE, expires_at: expiresAt }])),
 }), success, "start date is optional, expiry is not");
 
@@ -117,15 +120,15 @@ const invalidConfigurations = [
   JSON.stringify([...validEntries, { code: OTHER_TEST_CODE }]),
 ];
 for (const configuration of invalidConfigurations) {
-  const result = resolve(TEST_CODE, "obog", { env: environment(configuration) });
+  const result = await resolve(TEST_CODE, "obog", { env: environment(configuration) });
   assertFailure(result, "coupon_configuration_error", 503);
   const serialized = JSON.stringify(result);
   assert.equal(serialized.includes(TEST_CODE), false);
   assert.equal(serialized.includes(OTHER_TEST_CODE), false);
   assert.equal(serialized.includes("expires_at"), false);
 }
-assertFailure(resolve(TEST_CODE, "obog", { now: "not a date" }), "coupon_configuration_error", 503);
-assert.deepEqual(resolve(TEST_CODE, "obog", {
+assertFailure(await resolve(TEST_CODE, "obog", { now: "not a date" }), "coupon_configuration_error", 503);
+assert.deepEqual(await resolve(TEST_CODE, "obog", {
   env: environment(JSON.stringify([{ code: TEST_CODE, expires_at: "2028-02-29T23:59:59Z" }])),
 }), success, "a real leap day remains valid");
 

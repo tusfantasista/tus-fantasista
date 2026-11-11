@@ -1,0 +1,118 @@
+[data-coupon-admin] .coupon-admin__fields {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+[data-coupon-admin] .coupon-admin__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+[data-coupon-admin] .coupon-admin__note {
+  margin: 6px 0 0;
+  color: var(--admin-muted);
+  font-size: 0.78rem;
+  line-height: 1.6;
+}
+
+[data-coupon-admin] .coupon-admin__issued {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--admin-green);
+  border-radius: 5px;
+  background: var(--admin-green-soft);
+}
+
+[data-coupon-admin] .coupon-admin__issued p {
+  margin: 0 0 8px;
+  color: var(--admin-green);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+[data-coupon-admin] .coupon-admin__issued-code {
+  display: block;
+  margin-bottom: 12px;
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-size: clamp(1.1rem, 2.2vw, 1.55rem);
+  font-weight: 900;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+[data-coupon-admin] .coupon-admin__list-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+[data-coupon-admin] .coupon-admin__list-heading h3 { margin: 0; }
+[data-coupon-admin] .coupon-admin__list-heading p { margin: 0; color: var(--admin-muted); font-size: 0.82rem; }
+[data-coupon-admin] .coupon-admin__list { display: grid; gap: 14px; margin-top: 14px; }
+
+[data-coupon-admin] .coupon-admin__card {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--admin-line);
+  border-radius: 5px;
+  background: var(--admin-surface);
+}
+
+[data-coupon-admin] .coupon-admin__card-heading,
+[data-coupon-admin] .coupon-admin__identity,
+[data-coupon-admin] .coupon-admin__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+[data-coupon-admin] .coupon-admin__card-heading { justify-content: space-between; }
+[data-coupon-admin] .coupon-admin__identity { min-width: 0; }
+[data-coupon-admin] .coupon-admin__code {
+  margin: 0;
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-size: 1.05rem;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+[data-coupon-admin] .coupon-admin__memo { margin: 10px 0; font-size: 0.85rem; overflow-wrap: anywhere; }
+[data-coupon-admin] .coupon-admin__state--active { color: var(--admin-green); background: var(--admin-green-soft); }
+[data-coupon-admin] .coupon-admin__state--scheduled { color: var(--admin-blue); background: var(--admin-blue-soft); }
+[data-coupon-admin] .coupon-admin__state--expired { color: var(--admin-orange); background: var(--admin-orange-soft); }
+[data-coupon-admin] .coupon-admin__state--disabled { color: var(--admin-muted); background: #eceff2; }
+
+[data-coupon-admin] .coupon-admin__dates {
+  display: grid;
+  grid-template-columns: 5em minmax(0, 1fr);
+  gap: 5px 12px;
+  margin: 12px 0;
+  font-size: 0.82rem;
+}
+
+[data-coupon-admin] .coupon-admin__dates dt { color: var(--admin-muted); }
+[data-coupon-admin] .coupon-admin__dates dd { margin: 0; overflow-wrap: anywhere; }
+[data-coupon-admin] .coupon-admin__editor { margin: 14px 0; border-top: 1px solid var(--admin-line); }
+[data-coupon-admin] .coupon-admin__editor summary { padding: 12px 0; color: var(--admin-blue); font-size: 0.84rem; font-weight: 800; cursor: pointer; }
+[data-coupon-admin] .coupon-admin__checkbox { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 14px; font-size: 0.82rem; }
+[data-coupon-admin] .coupon-admin__checkbox input { margin-top: 4px; }
+[data-coupon-admin] button:disabled { opacity: 0.55; cursor: wait; }
+[data-coupon-admin] fieldset:disabled { opacity: 0.65; }
+[data-coupon-admin] :focus-visible { outline: 3px solid var(--admin-blue); outline-offset: 3px; }
+[data-coupon-admin] [hidden] { display: none !important; }
+
+@media (max-width: 760px) {
+  [data-coupon-admin] .coupon-admin__grid { grid-template-columns: 1fr; }
+  [data-coupon-admin] .coupon-admin__card { padding: 14px; }
+  [data-coupon-admin] .coupon-admin__card-heading { align-items: flex-start; }
+  [data-coupon-admin] .coupon-admin__issued-code { font-size: 1.2rem; }
+  [data-coupon-admin] input[type="datetime-local"] { min-width: 0; }
+}

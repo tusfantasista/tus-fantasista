@@ -95,7 +95,7 @@ function payloadFor(ticketType, coupon) {
   };
 }
 
-const coupon = resolveEarlyCoupon(env, " test_only_early ", "obog", new Date(clock));
+const coupon = await resolveEarlyCoupon(env, " test_only_early ", "obog", new Date(clock));
 assert.deepEqual(coupon, { ok: true, applied: true, code: "TEST_ONLY_EARLY", fee_period: "early" });
 const couponPayload = payloadFor("obog", coupon);
 const decision = plain(api.bankDecisionPayload({
@@ -124,7 +124,7 @@ const token = await api.createBankPreviewToken(env, quote);
 assert.deepEqual(plain(await api.readBankPreviewToken(env, token)), quote);
 
 clock = couponExpiresAt + 1;
-assert.equal(resolveEarlyCoupon(env, coupon.code, "obog", new Date(clock)).error, "coupon_expired");
+assert.equal((await resolveEarlyCoupon(env, coupon.code, "obog", new Date(clock))).error, "coupon_expired");
 assert.deepEqual(plain(await api.verifyBankPreviewToken(env, token, {
   ...couponPayload, action: "confirm_bank_transfer", bank_preview_token: token,
 })), quote, "signed bank quote survives coupon expiry until its own preview deadline");
@@ -194,7 +194,7 @@ for (const [ticketType, couponTicketAmount, ordinaryTicketAmount, expectedDonati
   ["obog__gold", 48000, 49000, 25000],
   ["obog_staff__gold", 41500, 42000, 25000],
 ]) {
-  const validatedCoupon = resolveEarlyCoupon(env, coupon.code, ticketType, new Date(clock));
+  const validatedCoupon = await resolveEarlyCoupon(env, coupon.code, ticketType, new Date(clock));
   assert.equal(validatedCoupon.applied, true);
   const discountedDb = recordingDb();
   const ordinaryDb = recordingDb();

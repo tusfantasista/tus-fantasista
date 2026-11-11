@@ -7,6 +7,8 @@ const ELIGIBLE_BASE_TICKETS = new Set([
 ]);
 const CODE_PATTERN = /^[a-zA-Z0-9_-]{1,64}$/;
 const MAX_BODY_BYTES = 1024;
+const ADMIN_BODY_BYTES = 4096;
+const COUPON_COLUMNS = "id, code, label, starts_at, expires_at, disabled_at, created_at, updated_at";
 
 function failure(error, message, status = 400) {
   return { ok: false, status, error, message };
@@ -55,7 +57,18 @@ function configuredInstant(value) {
   return Number.isFinite(instant) ? instant : null;
 }
 
-export function resolveEarlyCoupon(env, code, ticketType, now = new Date()) {
+function evaluateCoupon(normalized, startsAt, expiresAt, now) {
+  const currentInstant = now instanceof Date ? now.getTime() : NaN;
+  if (!Number.isFinite(currentInstant) || expiresAt === null
+      || (startsAt !== null && startsAt >= expiresAt)) return invalidConfiguration();
+  if (startsAt !== null && currentInstant < startsAt) return invalidCoupon();
+  if (currentInstant >= expiresAt) {
+    return failure("coupon_expired", "このクーポンの有効期限は終了しました。");
+  }
+  return { ok: true, applied: true, code: normalized, fee_period: "early" };
+}
+
+export async function resolveEarlyCoupon(env, code, ticketType, now = new Date()) {
   if (code === undefined || code === null || (typeof code === "string" && !code.trim())) {
     return { ok: true, applied: false, code: "" };
   }
@@ -63,6 +76,26 @@ export function resolveEarlyCoupon(env, code, ticketType, now = new Date()) {
   if (!normalized) return invalidCoupon();
   if (!isEligibleTicket(ticketType)) {
     return failure("coupon_ineligible", "この参加区分ではクーポンをご利用いただけません。");
+  }
+
+  try {
+    if (env?.DB) {
+      const managed = await env.DB.prepare(
+        "SELECT code, starts_at, expires_at, disabled_at FROM festa60_coupons WHERE code = ? LIMIT 1",
+      ).bind(normalized).first();
+      if (managed) {
+        // A managed record is authoritative, including stopped/expired codes.
+        // Removing or changing an env setting cannot reactivate a stopped code.
+        if (managed.disabled_at !== null && managed.disabled_at !== undefined) return invalidCoupon();
+        const startsAt = managed.starts_at === null ? null : configuredInstant(managed.starts_at);
+        if (managed.starts_at !== null && startsAt === null) return invalidConfiguration();
+        return evaluateCoupon(normalized, startsAt, configuredInstant(managed.expires_at), now);
+      }
+    }
+  } catch {
+    // Do not fall back to env after an unavailable table/database: doing so
+    // could unknowingly reactivate a CRM-disabled coupon.
+    return invalidConfiguration();
   }
 
   const configuration = env?.FESTA60_EARLY_COUPONS;
@@ -94,13 +127,7 @@ export function resolveEarlyCoupon(env, code, ticketType, now = new Date()) {
 
   const candidate = configured.get(normalized);
   if (!candidate) return invalidCoupon();
-  const currentInstant = now instanceof Date ? now.getTime() : NaN;
-  if (!Number.isFinite(currentInstant)) return invalidConfiguration();
-  if (candidate.startsAt !== null && currentInstant < candidate.startsAt) return invalidCoupon();
-  if (currentInstant >= candidate.expiresAt) {
-    return failure("coupon_expired", "このクーポンの有効期限は終了しました。");
-  }
-  return { ok: true, applied: true, code: normalized, fee_period: "early" };
+  return evaluateCoupon(normalized, candidate.startsAt, candidate.expiresAt, now);
 }
 
 function json(payload, status = 200, headers = {}) {
@@ -110,7 +137,7 @@ function json(payload, status = 200, headers = {}) {
   });
 }
 
-async function readBoundedJson(request) {
+async function readBoundedJson(request, maxBytes = MAX_BODY_BYTES) {
   const reader = request.body?.getReader();
   if (!reader) return { error: "bad_request", status: 400 };
   const decoder = new TextDecoder("utf-8", { fatal: true });
@@ -121,7 +148,7 @@ async function readBoundedJson(request) {
       const { done, value } = await reader.read();
       if (done) break;
       size += value.byteLength;
-      if (size > MAX_BODY_BYTES) {
+      if (size > maxBytes) {
         await reader.cancel();
         return { error: "payload_too_large", status: 413 };
       }
@@ -152,8 +179,140 @@ export async function onRequestCoupon({ request, env }) {
   if (rateLimited) return rateLimited;
   const parsed = await readBoundedJson(request);
   if (!parsed.payload) return json({ ok: false, error: parsed.error, message: "送信内容をご確認ください。" }, parsed.status);
-  const result = resolveEarlyCoupon(env, parsed.payload.coupon_code, parsed.payload.ticket_type);
+  const result = await resolveEarlyCoupon(env, parsed.payload.coupon_code, parsed.payload.ticket_type);
   if (result.ok) return json(result);
   const { status, ...payload } = result;
   return json(payload, status);
+}
+
+function adminFailure(error, message, status = 400) {
+  return json({ ok: false, error, message }, status);
+}
+
+function unavailableAdmin() {
+  return adminFailure("coupon_configuration_error", "クーポンを取得・保存できませんでした。時間をおいてお試しください。", 503);
+}
+
+function validateAdminFields(payload, existing = null) {
+  const allowed = new Set(existing
+    ? ["label", "starts_at", "expires_at", "enabled", "expected_updated_at"]
+    : ["code", "label", "starts_at", "expires_at"]);
+  if (Object.keys(payload).some((field) => !allowed.has(field))) {
+    return { response: adminFailure("coupon_invalid_fields", "クーポンコードは変更できません。入力内容をご確認ください。") };
+  }
+  if (existing && (typeof payload.expected_updated_at !== "string" || !payload.expected_updated_at)) {
+    return { response: adminFailure("coupon_invalid_version", "一覧を更新して、最新のクーポン情報で操作してください。") };
+  }
+  if (existing && !Object.keys(payload).some((field) => field !== "expected_updated_at")) {
+    return { response: adminFailure("coupon_invalid_fields", "変更する内容を指定してください。") };
+  }
+  const label = Object.hasOwn(payload, "label") ? payload.label : (existing?.label ?? "");
+  if (typeof label !== "string" || [...label.trim()].length > 80) {
+    return { response: adminFailure("coupon_invalid_label", "管理用メモは80文字以内で入力してください。") };
+  }
+  const rawStart = Object.hasOwn(payload, "starts_at") ? payload.starts_at : existing?.starts_at;
+  const noStart = rawStart === undefined || rawStart === null || (typeof rawStart === "string" && !rawStart.trim());
+  const startsAt = noStart ? null : configuredInstant(rawStart);
+  const expiresAt = configuredInstant(Object.hasOwn(payload, "expires_at") ? payload.expires_at : existing?.expires_at);
+  if (expiresAt === null || (!noStart && startsAt === null) || (startsAt !== null && startsAt >= expiresAt)) {
+    return { response: adminFailure("coupon_invalid_dates", "期限と開始日時を、タイムゾーン付きの正しい日時で指定してください。期限は開始日時より後にしてください。") };
+  }
+  if (Object.hasOwn(payload, "enabled") && typeof payload.enabled !== "boolean") {
+    return { response: adminFailure("coupon_invalid_enabled", "有効・停止の指定をご確認ください。") };
+  }
+  return {
+    label: label.trim(),
+    starts_at: startsAt === null ? null : new Date(startsAt).toISOString(),
+    expires_at: new Date(expiresAt).toISOString(),
+  };
+}
+
+export async function onRequestAdminCoupons({ request, env, params = {}, actor }) {
+  // The Worker wrapper must authenticate with assertAdmin before calling this
+  // handler. Require its authenticated actor as an additional integration guard.
+  if (typeof actor !== "string" || !actor.trim()) {
+    return adminFailure("unauthorized", "クーポンの管理には認証が必要です。", 401);
+  }
+  const method = request.method;
+  if (!["GET", "POST", "PATCH"].includes(method)
+      || (params.id && method !== "PATCH")) {
+    return json({ ok: false, error: "method_not_allowed", message: "この方法ではクーポンを操作できません。" }, 405, { allow: "GET, POST, PATCH" });
+  }
+  if (method === "GET") {
+    try {
+      if (!env?.DB) return unavailableAdmin();
+      const result = await env.DB.prepare(`SELECT ${COUPON_COLUMNS} FROM festa60_coupons ORDER BY created_at DESC, id DESC`).all();
+      return json({ ok: true, coupons: result.results ?? [] });
+    } catch {
+      return unavailableAdmin();
+    }
+  }
+
+  const origin = request.headers.get("origin");
+  const sameOrigin = origin
+    ? origin === new URL(request.url).origin
+    : request.headers.get("sec-fetch-site") === "same-origin";
+  if (!sameOrigin) return adminFailure("forbidden", "同じサイトから操作してください。", 403);
+  if (request.headers.get("content-type")?.split(";")[0].trim().toLowerCase() !== "application/json") {
+    return adminFailure("unsupported_media_type", "送信内容をご確認ください。", 415);
+  }
+  const limited = await enforceRateLimit(request, env, "COUPON_ADMIN_RATE_LIMITER", "festa60-admin-coupons");
+  if (limited) return limited;
+  const parsed = await readBoundedJson(request, ADMIN_BODY_BYTES);
+  if (!parsed.payload) return adminFailure(parsed.error, "送信内容をご確認ください。", parsed.status);
+  const payload = parsed.payload;
+
+  try {
+    if (!env?.DB) return unavailableAdmin();
+    if (method === "POST") {
+      const fields = validateAdminFields(payload);
+      if (fields.response) return fields.response;
+      let code;
+      if (payload.code === undefined || (typeof payload.code === "string" && !payload.code.trim())) {
+        const random = crypto.getRandomValues(new Uint8Array(8));
+        code = `F60-${Array.from(random, (byte) => byte.toString(16).padStart(2, "0")).join("").toUpperCase()}`;
+      } else {
+        code = normalizeCode(payload.code);
+      }
+      if (!code) return adminFailure("coupon_invalid_code", "コードは英数字・ハイフン・アンダースコアの64文字以内で入力してください。");
+      const now = new Date().toISOString();
+      let created;
+      try {
+        created = await env.DB.prepare(
+          `INSERT INTO festa60_coupons (id, code, label, starts_at, expires_at, disabled_at, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, NULL, ?, ?) RETURNING ${COUPON_COLUMNS}`,
+        ).bind(crypto.randomUUID(), code, fields.label, fields.starts_at, fields.expires_at, now, now).first();
+      } catch (error) {
+        if (/UNIQUE constraint failed:\s*festa60_coupons\.code/i.test(String(error?.message ?? ""))) {
+          return adminFailure("coupon_code_exists", "このコードはすでに登録されています。別のコードを指定してください。", 409);
+        }
+        return unavailableAdmin();
+      }
+      return created ? json({ ok: true, coupon: created }, 201) : unavailableAdmin();
+    }
+
+    if (typeof params.id !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(params.id)) {
+      return adminFailure("coupon_invalid_id", "操作するクーポンを一覧から選んでください。");
+    }
+    const existing = await env.DB.prepare(`SELECT ${COUPON_COLUMNS} FROM festa60_coupons WHERE id = ?`).bind(params.id).first();
+    if (!existing) return adminFailure("coupon_not_found", "クーポンが見つかりません。一覧を更新してください。", 404);
+    const fields = validateAdminFields(payload, existing);
+    if (fields.response) return fields.response;
+    if (payload.expected_updated_at !== existing.updated_at) {
+      return adminFailure("coupon_conflict", "他の操作で更新されています。一覧を更新してやり直してください。", 409);
+    }
+    const previousInstant = configuredInstant(existing.updated_at);
+    if (previousInstant === null) return unavailableAdmin();
+    const updatedAt = new Date(Math.max(Date.now(), previousInstant + 1)).toISOString();
+    const disabledAt = payload.enabled === true ? null
+      : payload.enabled === false ? (existing.disabled_at ?? updatedAt) : existing.disabled_at;
+    const updated = await env.DB.prepare(
+      `UPDATE festa60_coupons SET label = ?, starts_at = ?, expires_at = ?, disabled_at = ?, updated_at = ?
+       WHERE id = ? AND updated_at = ? RETURNING ${COUPON_COLUMNS}`,
+    ).bind(fields.label, fields.starts_at, fields.expires_at, disabledAt, updatedAt, params.id, payload.expected_updated_at).first();
+    if (!updated) return adminFailure("coupon_conflict", "他の操作で更新されています。一覧を更新してやり直してください。", 409);
+    return json({ ok: true, coupon: updated });
+  } catch {
+    return unavailableAdmin();
+  }
 }

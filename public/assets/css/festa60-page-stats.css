@@ -1,0 +1,27 @@
+.page-stats-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:24px 0 12px}
+.page-stats-toolbar label{display:flex;align-items:center;gap:10px;font-size:.9rem;font-weight:700;color:#25333d}
+.page-stats-toolbar select{min-width:120px;border:1px solid #c7cdd2;border-radius:8px;padding:8px 12px;background:#fff;color:#25333d;font:inherit}
+.page-stats-toolbar p,.page-stats-range{margin:0;color:#64717c;font-size:.84rem;line-height:1.6}
+.page-stats-legend{display:flex;gap:20px;flex-wrap:wrap;margin:16px 0 4px;color:#374754;font-size:.85rem}
+.page-stats-legend span{display:inline-flex;align-items:center;gap:8px}
+.page-stats-legend i{display:inline-block;width:24px;height:3px;background:#2d5e93}
+.page-stats-legend .page-stats-legend-register{background:repeating-linear-gradient(90deg,#26734e 0 6px,transparent 6px 10px)}
+.page-stats-chart{width:100%;border:1px solid #e0e5e9;border-radius:12px;background:#fbfcfd;overflow:hidden;margin:12px 0}
+.page-stats-chart svg{display:block;width:100%;height:auto;min-height:180px}
+.page-stats-grid{stroke:#dce3e9;stroke-width:1}
+.page-stats-axis{fill:#5c6b77;font:12px system-ui,sans-serif}
+.page-stats-line{fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.page-stats-line--home{stroke:#2d5e93}
+.page-stats-line--register{stroke:#26734e;stroke-dasharray:7 5}
+.page-stats-dot--home{fill:#2d5e93}
+.page-stats-dot--register{fill:#fff;stroke:#26734e;stroke-width:1.8}
+.page-stats-table-details{margin-top:14px}
+.page-stats-table-details summary{cursor:pointer;color:#344b61;font-weight:700;font-size:.9rem;padding:8px 0}
+.page-stats-table-scroll{max-height:360px;overflow:auto;margin-top:8px;border:1px solid #dfe5e9;border-radius:8px}
+.page-stats-table{width:100%;border-collapse:collapse;font-size:.85rem;font-variant-numeric:tabular-nums}
+.page-stats-table caption{text-align:left;padding:10px 12px;color:#64717c;font-size:.8rem}
+.page-stats-table th,.page-stats-table td{padding:9px 14px;border-bottom:1px solid #e8ecef;text-align:right;white-space:nowrap}
+.page-stats-table th:first-child{text-align:left}
+.page-stats-table thead th{position:sticky;top:0;background:#f3f6f8;color:#40515f}
+.page-stats-table tbody th{font-weight:500;color:#40515f}
+@media(max-width:600px){.page-stats-toolbar{align-items:flex-start;gap:8px}.page-stats-chart{overflow-x:auto}.page-stats-chart svg{min-width:620px}.page-stats-legend{gap:12px}.page-stats-table th,.page-stats-table td{padding:9px}}

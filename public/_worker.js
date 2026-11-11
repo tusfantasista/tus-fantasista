@@ -1,6 +1,6 @@
 import { handleContactRequest } from "./contact-api.js";
 import { enforceRateLimit, publicSummaryCacheKey } from "./cloudflare-protection.js";
-import { resolveEarlyCoupon, onRequestCoupon } from "./festa60-coupons.js";
+import { resolveEarlyCoupon, onRequestCoupon, onRequestAdminCoupons } from "./festa60-coupons.js";
 import { onRequestPageEvents, readPageStats } from "./festa60-page-metrics.js";
 import {
   ABSENT_DONATION_TOTALS as SHARED_ABSENT_DONATION_TOTALS,
@@ -3477,7 +3477,7 @@ async function onRequestPost6({ request, env, waitUntil }) {
         coupon = { ok: true, ...quote.coupon_context };
       }
     }
-    coupon ||= resolveEarlyCoupon(env, payload.coupon_code, payload.ticket_type);
+    coupon ||= await resolveEarlyCoupon(env, payload.coupon_code, payload.ticket_type);
     if (!coupon.ok) return json({ ok: false, message: coupon.message, details: { coupon_code: coupon.error } }, { status: coupon.status });
     if (coupon.applied) {
       payload.coupon_code = coupon.code;
@@ -4215,8 +4215,20 @@ async function onRequestPageStats({ request, env }) {
   if (request.method !== "GET") return methodNotAllowed();
   const admin = assertAdmin(request, env);
   if (!admin.ok) return admin.response;
+  const rawDays = new URL(request.url).searchParams.get("days") ?? "30";
+  if (!["7", "30", "90"].includes(rawDays)) return badRequest("表示期間を確認してください。");
   try {
-    return json({ ok: true, stats: await readPageStats(env) });
+    return json({ ok: true, stats: await readPageStats(env, Number(rawDays)) });
+  } catch (error) {
+    return serverError(error);
+  }
+}
+
+async function onRequestCouponAdmin(context) {
+  const admin = assertAdmin(context.request, context.env);
+  if (!admin.ok) return admin.response;
+  try {
+    return await onRequestAdminCoupons({ ...context, actor: admin.actor });
   } catch (error) {
     return serverError(error);
   }
@@ -4281,6 +4293,8 @@ __name(constantTimeEqual3, "constantTimeEqual");
 
 // ../../../../Users/nakatsu/Documents/Codex/2026-05-18/github-pages-https-tusfantasista-github-io/.wrangler/tmp/pages-RPGt9O/functionsRoutes-0.22154614749156643.mjs
 var routes = [
+  { routePath: "/api/festa60/admin/coupons", mountPath: "/api/festa60/admin", method: "", middlewares: [], modules: [onRequestCouponAdmin] },
+  { routePath: "/api/festa60/admin/coupons/:id", mountPath: "/api/festa60/admin/coupons", method: "", middlewares: [], modules: [onRequestCouponAdmin] },
   { routePath: "/api/festa60/coupon", mountPath: "/api/festa60", method: "", middlewares: [], modules: [onRequestCoupon] },
   { routePath: "/api/festa60/page-events", mountPath: "/api/festa60", method: "", middlewares: [], modules: [onRequestPageEvents] },
   { routePath: "/api/festa60/admin/page-stats", mountPath: "/api/festa60/admin", method: "", middlewares: [], modules: [onRequestPageStats] },

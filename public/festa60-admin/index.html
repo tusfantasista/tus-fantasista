@@ -7,9 +7,12 @@
     <meta name="referrer" content="same-origin" />
     <title>FESTA 60 申込管理</title>
     <link rel="stylesheet" href="../assets/css/festa60-admin.css?v=20260830-1" />
+    <link rel="stylesheet" href="../assets/css/festa60-page-stats.css?v=20261111-2" />
+    <link rel="stylesheet" href="../assets/css/festa60-coupon-admin.css?v=20261111-1" />
     <script src="../assets/js/festa60-admin.js?v=20261103-1" defer></script>
     <script type="module" src="../assets/js/festa60-video-stats.js?v=20261111-1"></script>
-    <script type="module" src="../assets/js/festa60-page-stats.js?v=20261111-1"></script>
+    <script type="module" src="../assets/js/festa60-page-stats.js?v=20261111-2"></script>
+    <script type="module" src="../assets/js/festa60-coupon-admin.js?v=20261111-1"></script>
   </head>
   <body class="admin-page">
     <div id="environment-banner" class="admin-environment" hidden>TEST環境 / Cloudflare Pages Preview / 本番データではありません</div>
@@ -139,6 +142,34 @@
             <small data-page-first-view>初回 記録なし</small><small data-page-last-view>最新 記録なし</small>
           </article>
         </div>
+        <div class="page-stats-toolbar">
+          <label for="page-stats-period">日別推移の表示期間
+            <select id="page-stats-period" data-page-stats-period>
+              <option value="7">直近7日間</option>
+              <option value="30" selected>直近30日間</option>
+              <option value="90">直近90日間</option>
+            </select>
+          </label>
+          <p>日付は日本時間です。2026年11月11日の計測開始前の閲覧は含みません。記録のない日は0と表示します。上の累計回数は表示期間にかかわらず全期間です。</p>
+        </div>
+        <div data-page-stats-timeline hidden>
+          <p class="page-stats-range" data-page-stats-range></p>
+          <div class="page-stats-legend" aria-label="グラフの凡例">
+            <span><i aria-hidden="true"></i>FESTAトップページ（青・実線）</span>
+            <span><i class="page-stats-legend-register" aria-hidden="true"></i>申込ページ（緑・破線）</span>
+          </div>
+          <div class="page-stats-chart" data-page-stats-chart></div>
+          <details class="page-stats-table-details">
+            <summary>日別の数値を見る</summary>
+            <div class="page-stats-table-scroll">
+              <table class="page-stats-table">
+                <caption>日別の閲覧回数（日本時間・新しい日付から表示）</caption>
+                <thead><tr><th scope="col">日付</th><th scope="col">トップページ</th><th scope="col">申込ページ</th></tr></thead>
+                <tbody data-page-stats-daily></tbody>
+              </table>
+            </div>
+          </details>
+        </div>
         <p class="admin-updated" data-page-stats-updated>取得中</p>
       </section>
 
@@ -163,6 +194,59 @@
           </article>
         </div>
         <p class="admin-updated" data-video-stats-updated>取得中</p>
+      </section>
+
+      <section class="admin-list-section" aria-labelledby="coupon-admin-title" data-coupon-admin>
+        <div class="admin-section-heading admin-section-heading--actions">
+          <div>
+            <p class="admin-section-label">Coupons</p>
+            <h2 id="coupon-admin-title">超早期クーポンの発行・管理</h2>
+          </div>
+          <button class="admin-button" type="button" data-coupon-refresh>一覧を更新</button>
+        </div>
+        <p class="admin-definition">超早期料金（本人の参加費に適用）を利用できるコードを発行します。同伴者・欠席寄付は対象外です。有効期間内の利用回数制限はありません。表示・入力日時はすべて日本時間です。</p>
+        <p class="coupon-admin__note">銀行振込で確認済みの金額は、見積もりの有効期限まで保持されます。</p>
+        <div class="admin-panel">
+          <h3>新しく発行する</h3>
+          <form data-coupon-create>
+            <fieldset class="coupon-admin__fields" data-coupon-lock>
+              <legend class="visually-hidden">クーポンの発行内容</legend>
+              <div class="coupon-admin__grid">
+                <div class="admin-field">
+                  <label for="coupon-admin-code">コード（任意）</label>
+                  <input id="coupon-admin-code" name="code" maxlength="64" pattern="[A-Za-z0-9_-]{1,64}" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="coupon-admin-code-help" />
+                  <p id="coupon-admin-code-help" class="coupon-admin__note">空欄なら自動生成します。指定する場合は半角英数字・ハイフン・アンダースコアを使用してください。発行後のコード変更はできません。</p>
+                </div>
+                <div class="admin-field">
+                  <label for="coupon-admin-label">管理メモ（任意・80文字まで）</label>
+                  <input id="coupon-admin-label" name="label" maxlength="80" autocomplete="off" aria-describedby="coupon-admin-label-help" />
+                  <p id="coupon-admin-label-help" class="coupon-admin__note">配布先や用途など、管理者向けのメモです。</p>
+                </div>
+                <div class="admin-field">
+                  <label for="coupon-admin-starts">適用開始（任意・日本時間）</label>
+                  <input id="coupon-admin-starts" name="starts_at" type="datetime-local" step="1" aria-describedby="coupon-admin-starts-help" />
+                  <p id="coupon-admin-starts-help" class="coupon-admin__note">空欄なら発行後から利用できます。</p>
+                </div>
+                <div class="admin-field">
+                  <label for="coupon-admin-expires">有効期限（必須・日本時間）</label>
+                  <input id="coupon-admin-expires" name="expires_at" type="datetime-local" step="1" required aria-describedby="coupon-admin-expires-help" />
+                  <p id="coupon-admin-expires-help" class="coupon-admin__note">指定した日時になった時点で利用できなくなります。</p>
+                </div>
+              </div>
+              <button class="admin-button admin-button--primary" type="submit">クーポンを発行</button>
+            </fieldset>
+          </form>
+          <p class="admin-message" role="status" aria-live="polite" data-coupon-create-message hidden></p>
+          <div class="coupon-admin__issued" data-coupon-issued hidden>
+            <p>発行したコード</p>
+            <output class="coupon-admin__issued-code" data-coupon-issued-code tabindex="-1"></output>
+            <button class="admin-button" type="button" data-coupon-issued-copy>コードをコピー</button>
+          </div>
+        </div>
+        <div class="coupon-admin__list-heading"><h3>発行済みクーポン</h3><p data-coupon-count>取得中</p></div>
+        <p class="admin-message" role="status" aria-live="polite" data-coupon-list-message>クーポン一覧を取得しています。</p>
+        <div class="coupon-admin__list" data-coupon-list hidden></div>
+        <p class="admin-updated" data-coupon-updated>取得中</p>
       </section>
 
       <section class="admin-list-section" aria-labelledby="applications-title">

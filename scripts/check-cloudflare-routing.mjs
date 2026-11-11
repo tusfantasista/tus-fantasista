@@ -8,6 +8,8 @@ const expectedApiRoutes = [
   "/api/festa60/admin/import",
   "/api/festa60/admin/video-stats",
   "/api/festa60/admin/page-stats",
+  "/api/festa60/admin/coupons",
+  "/api/festa60/admin/coupons/*",
   "/api/festa60/stripe/webhook",
   "/api/festa60/applications",
   "/api/festa60/config",
