@@ -1,5 +1,7 @@
 import { handleContactRequest } from "./contact-api.js";
 import { enforceRateLimit, publicSummaryCacheKey } from "./cloudflare-protection.js";
+import { resolveEarlyCoupon, onRequestCoupon } from "./festa60-coupons.js";
+import { onRequestPageEvents, readPageStats } from "./festa60-page-metrics.js";
 import {
   ABSENT_DONATION_TOTALS as SHARED_ABSENT_DONATION_TOTALS,
   APPLICATION_DEADLINE_ISO as SHARED_APPLICATION_DEADLINE_ISO,
@@ -410,6 +412,12 @@ async function insertApplication(db, payload, requestMeta = {}) {
   const companions = Array.isArray(payload.companions) ? payload.companions.filter((item) => item.full_name) : [];
   const pricingVersion = normalizePricingVersion(payload.pricing_version || CURRENT_PRICING_VERSION);
   const lineItems = buildPaymentLineItems(payload, companions, pricingVersion);
+  if (payload.coupon_applied) {
+    for (const item of lineItems.filter((item) => item.item_type !== "companion")) {
+      item.label = `${item.label}（超早期クーポン適用）`;
+      item.metadata = { ...item.metadata, coupon_code: payload.coupon_code, coupon_type: "early_fee" };
+    }
+  }
   const totalAmountJpy = lineItemsTotal(lineItems);
   const donationEquivalentJpy = donationEquivalentForTicket(payload.ticket_type);
   const quantity = 1 + companions.length;
@@ -2968,7 +2976,7 @@ async function createBankPreviewToken(env, data) {
   return `${encodedPayload}.${bytesToBase64Url(new Uint8Array(signature))}`;
 }
 __name(createBankPreviewToken, "createBankPreviewToken");
-async function verifyBankPreviewToken(env, token, payload) {
+async function readBankPreviewToken(env, token) {
   const [encodedPayload, encodedSignature, extra] = String(token || "").split(".");
   if (!encodedPayload || !encodedSignature || extra) throw new Error("銀行振込の確認情報が無効です。振込先をもう一度確認してください。");
   const key = await bankPreviewSigningKey(env);
@@ -2981,6 +2989,10 @@ async function verifyBankPreviewToken(env, token, payload) {
   if (!valid) throw new Error("銀行振込の確認情報が無効です。振込先をもう一度確認してください。");
   const data = JSON.parse(new TextDecoder().decode(base64UrlToBytes(encodedPayload)));
   if (!data.expires_at || Date.now() > data.expires_at) throw new Error("振込先の確認期限が切れました。振込先をもう一度確認してください。");
+  return data;
+}
+async function verifyBankPreviewToken(env, token, payload) {
+  const data = await readBankPreviewToken(env, token);
   if (data.payload_hash !== await bankPreviewPayloadHash(payload)) throw new Error("申込内容が変更されています。振込先をもう一度確認してください。");
   return data;
 }
@@ -3449,6 +3461,33 @@ async function onRequestPost6({ request, env, waitUntil }) {
     payload.ticket_type = normalizeTicketType(payload.ticket_type, payload.support_tier);
     const validation = validateApplication(payload, env, action);
     if (!validation.ok) return badRequest("\u5165\u529B\u5185\u5BB9\u3092\u78BA\u8A8D\u3057\u3066\u304F\u3060\u3055\u3044\u3002", validation.errors);
+    let coupon;
+    if (["confirm_bank_transfer", "switch_to_online", "cancel_bank_preview"].includes(action)) {
+      let quote;
+      try {
+        quote = await readBankPreviewToken(env, payload.bank_preview_token);
+      } catch (error) {
+        return badRequest(error.message);
+      }
+      if (quote.coupon_context?.applied) {
+        // A valid bank quote keeps its agreed fee until the signed preview expires.
+        if (typeof payload.coupon_code !== "string" || payload.coupon_code.trim().toUpperCase() !== quote.coupon_context.code) {
+          return badRequest("クーポンが変更されています。振込先をもう一度確認してください。", { coupon_code: "changed" });
+        }
+        coupon = { ok: true, ...quote.coupon_context };
+      }
+    }
+    coupon ||= resolveEarlyCoupon(env, payload.coupon_code, payload.ticket_type);
+    if (!coupon.ok) return json({ ok: false, message: coupon.message, details: { coupon_code: coupon.error } }, { status: coupon.status });
+    if (coupon.applied) {
+      payload.coupon_code = coupon.code;
+      payload.coupon_applied = true;
+      payload.fee_period = "early";
+    } else {
+      // Client-supplied pricing flags never grant a discount.
+      delete payload.coupon_code;
+      delete payload.coupon_applied;
+    }
     const isStaffApplication = STAFF_TICKET_TYPES.includes(splitTicketType(payload.ticket_type).base_ticket_type);
     payload.source = isStaffApplication ? "staff_invite" : "public_form";
     delete payload.staff_access_code;
@@ -3490,6 +3529,7 @@ async function onRequestPost6({ request, env, waitUntil }) {
         pricing_version: payload.pricing_version,
         pricing_effective_at: payload.pricing_effective_at,
         payload_hash: payloadHash,
+        ...(coupon.applied ? { coupon_context: { applied: true, code: coupon.code, fee_period: "early" } } : {}),
         expires_at: expiresAt
       });
       return json({
@@ -3865,6 +3905,11 @@ function validateApplication(payload, env, action = "submit_online") {
     }
   }
   const isDonor = ABSENT_DONATION_TICKET_TYPES.includes(baseTicketType) || supportTier !== "none";
+  // Existing signed bank previews retain their validated details; new previews require a phone.
+  const isBankContinuation = ["confirm_bank_transfer", "switch_to_online", "cancel_bank_preview"].includes(action);
+  if (isDonor && !isBankContinuation && (typeof payload.phone !== "string" || !payload.phone.trim())) {
+    errors.phone = "required_for_donor";
+  }
   if (payload.supporter_publication_consent && !isDonor) {
     errors.supporter_publication_consent = "supporter_plan_required";
   }
@@ -4166,6 +4211,17 @@ async function onRequestVideoStats({ request, env }) {
   }
 }
 
+async function onRequestPageStats({ request, env }) {
+  if (request.method !== "GET") return methodNotAllowed();
+  const admin = assertAdmin(request, env);
+  if (!admin.ok) return admin.response;
+  try {
+    return json({ ok: true, stats: await readPageStats(env) });
+  } catch (error) {
+    return serverError(error);
+  }
+}
+
 // _middleware.js
 var PROTECTED_PREFIXES = [
   "/apply",
@@ -4225,6 +4281,9 @@ __name(constantTimeEqual3, "constantTimeEqual");
 
 // ../../../../Users/nakatsu/Documents/Codex/2026-05-18/github-pages-https-tusfantasista-github-io/.wrangler/tmp/pages-RPGt9O/functionsRoutes-0.22154614749156643.mjs
 var routes = [
+  { routePath: "/api/festa60/coupon", mountPath: "/api/festa60", method: "", middlewares: [], modules: [onRequestCoupon] },
+  { routePath: "/api/festa60/page-events", mountPath: "/api/festa60", method: "", middlewares: [], modules: [onRequestPageEvents] },
+  { routePath: "/api/festa60/admin/page-stats", mountPath: "/api/festa60/admin", method: "", middlewares: [], modules: [onRequestPageStats] },
   {
     routePath: "/api/festa60/video-events",
     mountPath: "/api/festa60",

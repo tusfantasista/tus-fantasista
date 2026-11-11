@@ -35,6 +35,10 @@ import {
   const ticketType = document.getElementById("ticket_type");
   const ticketTypeDisplay = document.getElementById("ticket_type_display");
   const supportTier = document.getElementById("support_tier");
+  const phone = document.getElementById("phone");
+  const phoneRequiredLabel = document.getElementById("phone-required-label");
+  const couponSection = document.getElementById("coupon-section");
+  const couponCode = document.getElementById("coupon_code");
   const absentDonationTier = document.getElementById("absent_donation_tier");
   const feePeriod = document.getElementById("fee_period");
   const feePeriodDisplay = document.getElementById("fee_period_display");
@@ -232,8 +236,10 @@ import {
   updatePlanDetails();
   updateFeePreview();
 
-  form.addEventListener("submit", function (event) {
+  form.addEventListener("submit", async function (event) {
     event.preventDefault();
+    if (reviewApplicationButton.disabled) return;
+    reviewApplicationButton.disabled = true;
     try {
       if (!applicationOpen) throw new Error(applicationStatus === "coming_soon" ? REGISTRATION_STATUS_MESSAGE : "参加申込は2027年1月31日をもって締め切りました。変更や確認はFESTA事務局へお問い合わせください。");
       const payload = formPayload(new FormData(form));
@@ -242,10 +248,40 @@ import {
       if (clientErrors.length) {
         throw new Error(clientErrors.join("\n"));
       }
+      if (String(payload.coupon_code || "").trim()) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 10000);
+        try {
+          const response = await fetch("/api/festa60/coupon", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ coupon_code: payload.coupon_code, ticket_type: normalizeTicketType(payload.ticket_type, payload.support_tier) }),
+            signal: controller.signal,
+          });
+          const result = await response.json();
+          if (!response.ok || !result.ok || !result.applied || result.fee_period !== "early") {
+            throw new Error(result.message || "クーポンコードを確認してください。");
+          }
+          payload.coupon_code = result.code;
+          payload.coupon_applied = true;
+          payload.fee_period = "early";
+        } catch (error) {
+          if (error.name === "AbortError" || error instanceof TypeError || error instanceof SyntaxError) {
+            throw new Error("クーポンを確認できませんでした。通信状況をご確認のうえ、もう一度お試しください。");
+          }
+          throw error;
+        } finally {
+          clearTimeout(timeout);
+        }
+      } else {
+        delete payload.coupon_code;
+      }
       pendingPayload = payload;
       showConfirmation(payload);
     } catch (error) {
       setMessage(error.message, "error");
+    } finally {
+      reviewApplicationButton.disabled = !applicationOpen;
     }
   });
 
@@ -471,6 +507,9 @@ import {
     supportPlanDetail.hidden = isAbsentDonation;
     photoConsentSection.hidden = isAbsentDonation;
     absentDonationSection.hidden = !isAbsentDonation;
+    couponSection.hidden = isAbsentDonation;
+    couponCode.disabled = isAbsentDonation;
+    if (isAbsentDonation) couponCode.value = "";
     absentDonationTier.required = isAbsentDonation;
     ticketType.disabled = isAbsentDonation;
     supportTier.disabled = isAbsentDonation;
@@ -491,6 +530,9 @@ import {
 
   function updateReturnAddressRequirement() {
     const isDonor = applicationMode.value === "absent_donation" || supportTier.value !== "none";
+    phone.required = isDonor;
+    phoneRequiredLabel.textContent = isDonor ? "必須" : "任意";
+    phoneRequiredLabel.className = isDonor ? "crm-required" : "crm-optional";
     returnAddressSection.hidden = !isDonor;
     postalCode.required = isDonor;
     prefecture.required = isDonor;
@@ -738,6 +780,8 @@ import {
       family_name_kana: "姓（ふりがな）",
       given_name_kana: "名（ふりがな）",
       email: "メールアドレス",
+      phone: "電話番号",
+      coupon_code: "クーポンコード",
       ticket_type: "参加・寄付プラン",
       reception_attendance: "懇親会の参加",
       privacy_consent: "個人情報の取扱いへの同意",
@@ -796,7 +840,8 @@ import {
         title: "参加・寄付内容",
         rows: [
           ["卒部区分（割引・チケット判定）", ticketTypeDisplay.value],
-          ["参加費区分", staffMode ? "役員・当日お手伝い（参加費部分50%）" : feePeriodDisplay.value],
+          ["参加費区分", payload.coupon_applied ? `超早期クーポン適用${staffMode ? "／役員・当日お手伝い（参加費部分50%）" : ""}` : staffMode ? "役員・当日お手伝い（参加費部分50%）" : feePeriodDisplay.value],
+          ...(payload.coupon_applied ? [["クーポンコード", payload.coupon_code]] : []),
           ["参加プラン", selectedLabel(supportTier)],
           ["申込時期割引", applicationPeriodDiscount(payload.fee_period) ? `-${formatYen(applicationPeriodDiscount(payload.fee_period))}` : "割引なし"],
           ["卒部年度割引", graduationDiscount(payload.ticket_type) ? `-${formatYen(graduationDiscount(payload.ticket_type))}` : "割引なし"],
@@ -1053,6 +1098,9 @@ import {
       errors.push("参加者向け支援プランはOBOG区分で選択してください。");
     }
     const isDonor = isAbsentDonation || payload.support_tier !== "none";
+    if (isDonor && !String(payload.phone || "").trim()) {
+      errors.push("寄付・サポータープランのお申し込みには電話番号が必要です。");
+    }
     if (isDonor && payload.supporter_publication_consent && !payload.supporter_anonymous && !String(payload.supporter_publication_name || "").trim()) {
       errors.push("氏名掲載に同意する場合は掲載名を入力してください。");
     }

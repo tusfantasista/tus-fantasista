@@ -135,8 +135,9 @@
 
           <div class="crm-two">
             <div class="crm-field">
-              <label for="phone">電話番号 <span class="crm-optional">任意</span></label>
-              <input id="phone" name="phone" autocomplete="tel" />
+              <label for="phone">電話番号 <span id="phone-required-label" class="crm-optional">任意</span></label>
+              <input id="phone" name="phone" type="tel" autocomplete="tel" aria-describedby="phone-help" />
+              <p id="phone-help" class="crm-help">寄付・サポータープランをお申し込みの方は必須です。</p>
             </div>
             <div></div>
           </div>
@@ -178,6 +179,12 @@
                 <li>卒部1〜5年目（OBOG1〜5年目／2021〜2025年度卒部）：さらに4,000円引き</li>
               </ul>
             </details>
+          </div>
+
+          <div id="coupon-section" class="crm-field">
+            <label for="coupon_code">クーポンコード <span class="crm-optional">お持ちの方のみ</span></label>
+            <input id="coupon_code" name="coupon_code" maxlength="64" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="coupon-help" />
+            <p id="coupon-help" class="crm-help">コードをお持ちの方は入力してください。「入力内容を確認する」で適用後の金額を確認できます。カード等のオンライン決済・銀行振込のどちらでも利用できます。同伴者料金・欠席寄付は対象外です。</p>
           </div>
 
           <details id="attendance-ticket-notice" class="crm-notice crm-notice--plain crm-disclosure">
@@ -629,6 +636,7 @@
       </div>
     </dialog>
     <footer class="crm-legal-footer"><a href="https://tus-fantasista.pages.dev/terms/">サイト利用条件</a><a href="../festa-60th/terms/">FESTA参加申込条件</a><a href="../festa-60th/legal/">特定商取引法に基づく表記</a><a href="../festa-60th/privacy/">プライバシーポリシー</a></footer>
-    <script type="module" src="../assets/js/festa60-register.js?v=20260829-1"></script>
+    <script type="module" src="../assets/js/festa60-register.js?v=20261111-2"></script>
+    <script type="module" src="../assets/js/festa60-page-metrics.js?v=20261111-1"></script>
   </body>
 </html>

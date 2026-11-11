@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="../assets/css/festa60-admin.css?v=20260830-1" />
     <script src="../assets/js/festa60-admin.js?v=20261103-1" defer></script>
     <script type="module" src="../assets/js/festa60-video-stats.js?v=20261111-1"></script>
+    <script type="module" src="../assets/js/festa60-page-stats.js?v=20261111-1"></script>
   </head>
   <body class="admin-page">
     <div id="environment-banner" class="admin-environment" hidden>TEST環境 / Cloudflare Pages Preview / 本番データではありません</div>
@@ -119,6 +120,26 @@
           <p>申込確定前の入金、未消込残高、確定処理の停滞です。決済管理画面と照合して対応してください。</p>
           <div id="bank-transfer-alerts" class="admin-bank-alert-list"></div>
         </div>
+      </section>
+
+      <section class="admin-list-section" aria-labelledby="page-stats-title" data-page-stats>
+        <div class="admin-section-heading admin-section-heading--actions">
+          <div><p class="admin-section-label">Page Views</p><h2 id="page-stats-title">ホームページの閲覧状況</h2></div>
+          <button class="admin-button" type="button" data-page-stats-refresh>閲覧数を更新</button>
+        </div>
+        <p class="admin-definition">集計開始以降の閲覧回数です。トップページと申込ページを開いた回数をそれぞれ集計します。再読み込みや別タブも含み、閲覧した人数ではありません。管理画面の閲覧は含みません。</p>
+        <p class="admin-message" role="status" aria-live="polite" data-page-stats-message>閲覧状況を取得しています。</p>
+        <div class="admin-summary-grid" aria-live="polite" data-page-stats-values hidden>
+          <article class="admin-metric admin-metric--accent" data-page-stats-page="festa60-home">
+            <span>FESTAトップページ</span><strong data-page-views>-</strong>
+            <small data-page-first-view>初回 記録なし</small><small data-page-last-view>最新 記録なし</small>
+          </article>
+          <article class="admin-metric admin-metric--success" data-page-stats-page="festa60-register">
+            <span>申込ページ</span><strong data-page-views>-</strong>
+            <small data-page-first-view>初回 記録なし</small><small data-page-last-view>最新 記録なし</small>
+          </article>
+        </div>
+        <p class="admin-updated" data-page-stats-updated>取得中</p>
       </section>
 
       <section class="admin-list-section" aria-labelledby="video-stats-title" data-video-stats>
