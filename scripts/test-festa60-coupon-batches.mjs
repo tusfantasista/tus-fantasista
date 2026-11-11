@@ -126,7 +126,7 @@ try {
   assert.equal(issued.body.coupons.length, 3);
   assert.equal(new Set(codes(issued)).size, 3);
   for (const coupon of issued.body.coupons) {
-    assert.match(coupon.code, /^F60-[0-9A-F]{16}$/);
+    assert.match(coupon.code, /^[2-9A-HJ-NP-Z]{8}$/);
     assert.equal(coupon.label, "一括発行テスト");
     assert.equal(coupon.starts_at, "2026-11-11T23:00:00.000Z");
     assert.equal(coupon.expires_at, "2099-12-31T14:59:59.000Z");
@@ -224,7 +224,7 @@ try {
   const collision = fixture();
   collision.database.prepare(`INSERT INTO festa60_coupons
     (id,code,expires_at,created_at,updated_at) VALUES (?,?,?,?,?)`)
-    .run(randomUUID(), "F60-0000000000000000", "2099-12-31T00:00:00Z", "2026-11-12T00:00:00Z", "2026-11-12T00:00:00Z");
+    .run(randomUUID(), "22222222", "2099-12-31T00:00:00Z", "2026-11-12T00:00:00Z", "2026-11-12T00:00:00Z");
   Object.defineProperty(globalThis, "crypto", { configurable: true, value: {
     subtle: originalCrypto.subtle, randomUUID: originalCrypto.randomUUID.bind(originalCrypto),
     getRandomValues(bytes) { bytes.fill(0); return bytes; },
@@ -233,6 +233,15 @@ try {
   assert.deepEqual(collision.totals(), { festa60_coupons: 1, coupon_issue_batches: 0, coupon_issue_batch_items: 0 },
     "a real unique-code constraint failure also rolls back the whole batch");
   Object.defineProperty(globalThis, "crypto", cryptoDescriptor);
+
+  const legacy = fixture();
+  const legacyIntent = payload({ count: 1 });
+  const legacyIssued = await call(legacy, legacyIntent);
+  const oldCode = "F60-0123456789ABCDEF";
+  legacy.database.prepare("UPDATE festa60_coupons SET code = ? WHERE id = ?").run(oldCode, legacyIssued.body.coupons[0].id);
+  assert.deepEqual(codes(await call(legacy, legacyIntent)), [oldCode], "replaying an old batch returns its original long code");
+  assert.deepEqual((await call(legacy, undefined, { method: "GET" })).body.batches[0].codes, [oldCode]);
+  assert.equal(legacy.totals().festa60_coupons, 1, "legacy replay adds no replacement coupons");
 
   const corrupted = fixture();
   const corruptionIntent = payload({ count: 2 });

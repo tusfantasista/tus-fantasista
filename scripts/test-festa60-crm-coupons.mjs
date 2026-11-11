@@ -117,7 +117,7 @@ try {
 
   const generated = await admin("POST", { code: " ", expires_at: "2026-11-30T23:59:59+09:00" });
   assert.equal(generated.response.status, 201);
-  assert.match(generated.body.coupon.code, /^F60-[0-9A-F]{16}$/);
+  assert.match(generated.body.coupon.code, /^[2-9A-HJ-NP-Z]{8}$/);
   assert.equal(generated.body.coupon.label, "");
   assert.equal(generated.body.coupon.starts_at, null);
   assert.equal((await admin()).body.coupons.length, 2);
@@ -250,6 +250,13 @@ try {
     .run(randomUUID(), "lowercase", "2026-12-01T00:00:00Z", NOW(), NOW()), /CHECK constraint/);
   assert.equal(networkCalls, 0);
   assert.equal(JSON.stringify(warnings).includes("CRM_TEST_MANUAL"), false);
+  const legacyGeneratedCode = "F60-0123456789ABCDEF";
+  const legacyGenerated = await admin("POST", { code: legacyGeneratedCode, expires_at: "2099-12-31T00:00:00Z" });
+  assert.equal(legacyGenerated.response.status, 201);
+  assert.equal((await lookup(legacyGeneratedCode.toLowerCase())).code, legacyGeneratedCode,
+    "previously issued long codes stay usable without being shortened");
+  assert.ok((await admin()).body.coupons.some((item) => item.code === legacyGeneratedCode));
+
   console.log("PASS CRM coupons: real additive SQLite migration, issue/list/edit/stop/extend, generated codes, concurrent/stale/duplicate protection, DB-first public lookup and env compatibility, bounded admin API, safe DB errors and real Worker auth; local fixtures only");
 } finally {
   database.close();

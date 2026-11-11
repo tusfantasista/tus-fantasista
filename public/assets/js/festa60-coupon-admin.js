@@ -1,3 +1,5 @@
+import { randomCouponCode } from "./festa60-coupon-code.js";
+
 const API_URL = "/api/festa60/admin/coupons";
 const dateFormatter = new Intl.DateTimeFormat("ja-JP", {
   year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
@@ -447,8 +449,7 @@ export function initCouponAdmin(root) {
     const message = generatedMessage || createMessage;
     try {
       if (typeof globalThis.crypto?.getRandomValues !== "function") throw new Error("secure_random_unavailable");
-      const random = globalThis.crypto.getRandomValues(new Uint8Array(8));
-      const code = `F60-${Array.from(random, (byte) => byte.toString(16).padStart(2, "0")).join("").toUpperCase()}`;
+      const code = randomCouponCode();
       const input = createForm.elements.namedItem("code");
       input.value = code;
       setMessage(message, "コードを生成しました。有効期限を設定して「クーポンを発行」を押してください。");

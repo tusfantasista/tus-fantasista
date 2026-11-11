@@ -1,3 +1,4 @@
+import { randomCouponCode } from "./assets/js/festa60-coupon-code.js";
 import { splitTicketType } from "./assets/js/festa60-pricing.js";
 import { enforceRateLimit } from "./cloudflare-protection.js";
 
@@ -406,8 +407,7 @@ export async function onRequestAdminCoupons({ request, env, params = {}, actor }
       if (fields.response) return fields.response;
       let code;
       if (payload.code === undefined || (typeof payload.code === "string" && !payload.code.trim())) {
-        const random = crypto.getRandomValues(new Uint8Array(8));
-        code = `F60-${Array.from(random, (byte) => byte.toString(16).padStart(2, "0")).join("").toUpperCase()}`;
+        code = randomCouponCode();
       } else {
         code = normalizeCode(payload.code);
       }
@@ -562,8 +562,7 @@ export async function onRequestAdminCouponBatch({ request, env, actor }) {
     for (let index = 0; index < count; index += 1) {
       let code;
       for (let attempt = 0; attempt < 8; attempt += 1) {
-        const bytes = crypto.getRandomValues(new Uint8Array(8));
-        const candidate = `F60-${Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("").toUpperCase()}`;
+        const candidate = randomCouponCode();
         if (!generated.has(candidate)) { code = candidate; break; }
       }
       if (!code) return unavailableAdmin();
