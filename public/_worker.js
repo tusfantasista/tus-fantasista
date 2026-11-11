@@ -1,6 +1,8 @@
 import { handleContactRequest } from "./contact-api.js";
 import { enforceRateLimit, publicSummaryCacheKey } from "./cloudflare-protection.js";
-import { resolveEarlyCoupon, onRequestCoupon, onRequestAdminCoupons } from "./festa60-coupons.js";
+import { resolveEarlyCoupon, onRequestCoupon, onRequestAdminCoupons, reserveCoupon,
+  bindCouponPreview, markCouponUsed, releaseCouponReservation } from "./festa60-coupons.js";
+import { couponPermissions } from "./festa60-coupon-access.js";
 import { onRequestPageEvents, readPageStats } from "./festa60-page-metrics.js";
 import {
   ABSENT_DONATION_TOTALS as SHARED_ABSENT_DONATION_TOTALS,
@@ -2666,9 +2668,8 @@ async function deleteBankTransferPreviewCustomer(stripeSecret, customerId) {
   return true;
 }
 __name(deleteBankTransferPreviewCustomer, "deleteBankTransferPreviewCustomer");
-async function createBankTransferPreview({ env, payload, amount }) {
+async function createBankTransferPreview({ env, payload, amount, previewId = crypto.randomUUID(), sharedCoupon = false }) {
   const stripeSecret = requireStripeSecret(env);
-  const previewId = crypto.randomUUID();
   const customer = await createBankTransferPreviewCustomer(stripeSecret, payload, previewId);
   const params = new URLSearchParams();
   params.set("amount", String(amount));
@@ -2694,7 +2695,7 @@ async function createBankTransferPreview({ env, payload, amount }) {
   });
   const paymentIntent = await response.json();
   if (!response.ok) {
-    await deleteBankTransferPreviewCustomer(stripeSecret, customer.id).catch((cleanupError) => console.error(cleanupError));
+    if (!sharedCoupon) await deleteBankTransferPreviewCustomer(stripeSecret, customer.id).catch((cleanupError) => console.error(cleanupError));
     throw new Error(`Stripe bank transfer preview failed: ${paymentIntent.error?.message || response.status}`);
   }
   return { previewId, customer, paymentIntent };
@@ -2704,7 +2705,7 @@ async function persistBankTransferPreview(db, payload, preview, amount, payloadH
   const now = nowIso();
   const details = bankTransferDetails(preview.paymentIntent);
   await db.prepare(
-    `INSERT INTO bank_transfer_previews (
+    `INSERT OR IGNORE INTO bank_transfer_previews (
         id, stripe_payment_intent_id, stripe_customer_id, amount_total_jpy,
         amount_received_jpy, amount_remaining_jpy, currency, payload_hash, status,
         applicant_email, applicant_name, hosted_instructions_url, expires_at, created_at, updated_at,
@@ -2727,6 +2728,12 @@ async function persistBankTransferPreview(db, payload, preview, amount, payloadH
     payload.pricing_effective_at || DEFAULT_PRICING_EFFECTIVE_AT,
     donationEquivalentForTicket(payload.ticket_type)
   ).run();
+  const saved = await getBankTransferPreview(db, preview.previewId);
+  if (!saved || saved.stripe_payment_intent_id !== preview.paymentIntent.id
+      || saved.stripe_customer_id !== preview.customer.id || saved.payload_hash !== payloadHash
+      || Number(saved.amount_total_jpy) !== amount) {
+    throw new Error("Bank preview persistence mismatch.");
+  }
   return details;
 }
 __name(persistBankTransferPreview, "persistBankTransferPreview");
@@ -2771,7 +2778,7 @@ async function claimExpiredBankTransferPreview(db, cutoffIso, retryBeforeIso) {
          WHERE application_id IS NULL
            AND (
              status IN ('previewed', 'cancelled_cleanup_pending', 'switched_cleanup_pending')
-             OR (status IN ('cleanup_failed', 'cleanup_in_progress') AND updated_at < ?)
+             OR (status IN ('cleanup_failed', 'cleanup_in_progress', 'cancelling', 'switching') AND updated_at < ?)
            )
            AND expires_at < ?
          ORDER BY expires_at ASC
@@ -2780,7 +2787,7 @@ async function claimExpiredBankTransferPreview(db, cutoffIso, retryBeforeIso) {
         AND application_id IS NULL
         AND (
           status IN ('previewed', 'cancelled_cleanup_pending', 'switched_cleanup_pending')
-          OR (status IN ('cleanup_failed', 'cleanup_in_progress') AND updated_at < ?)
+          OR (status IN ('cleanup_failed', 'cleanup_in_progress', 'cancelling', 'switching') AND updated_at < ?)
         )
       RETURNING id, stripe_payment_intent_id, stripe_customer_id, amount_total_jpy,
                 amount_received_jpy, amount_remaining_jpy, status, expires_at`
@@ -2866,6 +2873,8 @@ async function cleanupExpiredBankTransferPreviews(env, db) {
             SET status = 'expired_cancelled', updated_at = ?
           WHERE id = ? AND status = 'cleanup_in_progress'`
       ).bind(nowIso(), preview.id).run();
+      const released = await releaseCouponReservation(env, { previewId: preview.id });
+      if (!released.ok) throw new Error("Coupon reservation cleanup failed.");
       await audit(db, {
         actor: "system",
         action: "bank_preview.expired_cancelled",
@@ -3431,6 +3440,29 @@ __name(verifyTurnstile, "verifyTurnstile");
 var PUBLIC_OBOG_TICKET_TYPES = ["obog", "obog_6_10", "obog_5_under"];
 var ABSENT_DONATION_TICKET_TYPES = ["absent_donation_30000", "absent_donation_10000", "absent_donation_5000"];
 var SCHOOL_LINEAGES = ["tus_obog", "gakushuin_ouyukai"];
+function couponFailureResponse(result) {
+  return json({ ok: false, error: result.error, message: result.message,
+    details: { coupon_code: result.error } }, { status: result.status || 503 });
+}
+async function recordCouponApplication(env, coupon, payload, payloadHash, application) {
+  if (!coupon.applied) return { ok: true };
+  return markCouponUsed(env, { code: coupon.code, owner: payload.client_submission_id,
+    payloadHash, applicationId: application.id, applicationCode: application.application_code });
+}
+async function bankPreviewResponse(env, record, paymentIntent, coupon, turnstileSkipped = false) {
+  const expiresAt = Date.parse(record.expires_at);
+  const token = await createBankPreviewToken(env, {
+    preview_id: record.id, payment_intent_id: record.stripe_payment_intent_id,
+    customer_id: record.stripe_customer_id, amount: Number(record.amount_total_jpy),
+    pricing_version: record.pricing_version, pricing_effective_at: record.pricing_effective_at,
+    payload_hash: record.payload_hash,
+    ...(coupon.applied ? { coupon_context: { applied: true, code: coupon.code, fee_period: "early" } } : {}),
+    expires_at: expiresAt,
+  });
+  return json({ ok: true, bank_transfer_preview: bankTransferDetails(paymentIntent),
+    bank_preview_token: token, expires_at: new Date(expiresAt).toISOString(),
+    turnstile_skipped: turnstileSkipped });
+}
 async function onRequestPost6({ request, env, waitUntil }) {
   try {
     const rateLimited = await enforceRateLimit(request, env, "APPLICATION_RATE_LIMITER", "festa60-applications");
@@ -3461,6 +3493,12 @@ async function onRequestPost6({ request, env, waitUntil }) {
     payload.ticket_type = normalizeTicketType(payload.ticket_type, payload.support_tier);
     const validation = validateApplication(payload, env, action);
     if (!validation.ok) return badRequest("\u5165\u529B\u5185\u5BB9\u3092\u78BA\u8A8D\u3057\u3066\u304F\u3060\u3055\u3044\u3002", validation.errors);
+    const isStaffApplication = STAFF_TICKET_TYPES.includes(splitTicketType(payload.ticket_type).base_ticket_type);
+    payload.source = isStaffApplication ? "staff_invite" : "public_form";
+    delete payload.staff_access_code;
+    const proposedCode = typeof payload.coupon_code === "string" ? payload.coupon_code.trim().toUpperCase() : payload.coupon_code;
+    const proposedHash = typeof proposedCode === "string" && proposedCode
+      ? await bankPreviewPayloadHash({ ...payload, coupon_code: proposedCode, coupon_applied: true, fee_period: "early" }) : undefined;
     let coupon;
     if (["confirm_bank_transfer", "switch_to_online", "cancel_bank_preview"].includes(action)) {
       let quote;
@@ -3477,7 +3515,9 @@ async function onRequestPost6({ request, env, waitUntil }) {
         coupon = { ok: true, ...quote.coupon_context };
       }
     }
-    coupon ||= await resolveEarlyCoupon(env, payload.coupon_code, payload.ticket_type);
+    coupon ||= await resolveEarlyCoupon(env, payload.coupon_code, payload.ticket_type, new Date(), {
+      owner: payload.client_submission_id, payloadHash: proposedHash,
+    });
     if (!coupon.ok) return json({ ok: false, message: coupon.message, details: { coupon_code: coupon.error } }, { status: coupon.status });
     if (coupon.applied) {
       payload.coupon_code = coupon.code;
@@ -3488,22 +3528,45 @@ async function onRequestPost6({ request, env, waitUntil }) {
       delete payload.coupon_code;
       delete payload.coupon_applied;
     }
-    const isStaffApplication = STAFF_TICKET_TYPES.includes(splitTicketType(payload.ticket_type).base_ticket_type);
-    payload.source = isStaffApplication ? "staff_invite" : "public_form";
-    delete payload.staff_access_code;
     const db = requireDb(env);
     scheduleExpiredBankTransferPreviewCleanup(waitUntil, env, db);
     payload.ticket_type = normalizeTicketType(payload.ticket_type);
     const companions = Array.isArray(payload.companions) ? payload.companions.filter((item) => item.full_name) : [];
     let amount = lineItemsTotal(buildPaymentLineItems(payload, companions, payload.pricing_version));
+    const couponPayloadHash = coupon.applied ? await bankPreviewPayloadHash(payload) : null;
+    let couponClaim = null;
 
     if (action === "preview_bank_transfer") {
       if (amount <= 0) return badRequest("銀行振込が必要なお支払い金額ではありません。");
       const turnstile = await verifyTurnstile(payload.turnstile_token, env, request);
       if (!turnstile.ok) return badRequest("Turnstile verification failed.", turnstile.result || turnstile.message);
+      if (coupon.applied) {
+        const reserved = await reserveCoupon(env, { code: coupon.code, owner: payload.client_submission_id,
+          payloadHash: couponPayloadHash, previewId: payload.client_submission_id });
+        if (!reserved.ok) return couponFailureResponse(reserved);
+        couponClaim = reserved.claim;
+        if (couponClaim.used_at) return couponFailureResponse({ status: 409, error: "coupon_used", message: "このクーポンは申込に適用済みです。" });
+        const saved = await getBankTransferPreview(db, couponClaim.preview_id);
+        if (saved) {
+          if (saved.payload_hash !== couponPayloadHash || Number(saved.amount_total_jpy) !== amount
+              || saved.application_id || Date.parse(saved.expires_at) <= Date.now()
+              || !["previewed", "funds_received_before_confirmation", "paid_before_confirmation", "unreconciled_funds_received"].includes(saved.status)) {
+            return couponFailureResponse({ status: 409, error: "coupon_reserved", message: "このクーポンの手続きは進行中です。確認済みの画面からお手続きください。" });
+          }
+          const intent = await retrieveStripePaymentIntent(requireStripeSecret(env), saved.stripe_payment_intent_id);
+          if (intent.status === "canceled" || intent.customer !== saved.stripe_customer_id || Number(intent.amount) !== amount) {
+            return badRequest("この振込先は現在使用できません。FESTA事務局へお問い合わせください。");
+          }
+          return bankPreviewResponse(env, saved, intent, coupon, Boolean(turnstile.skipped));
+        }
+        if (Date.parse(couponClaim.reserved_at) + bankPreviewTtlMs(env) <= Date.now()) {
+          return couponFailureResponse({ status: 409, error: "coupon_reserved", message: "クーポンの手続き状況を確認する必要があります。FESTA事務局へお問い合わせください。" });
+        }
+      }
       let preview;
       try {
-        preview = await createBankTransferPreview({ env, payload, amount });
+        preview = await createBankTransferPreview({ env, payload, amount,
+          ...(coupon.applied ? { previewId: couponClaim.preview_id, sharedCoupon: true } : {}) });
       } catch (error) {
         console.error(error);
         return json({
@@ -3514,31 +3577,18 @@ async function onRequestPost6({ request, env, waitUntil }) {
       }
       const payloadHash = await bankPreviewPayloadHash(payload);
       const expiresAt = Date.now() + bankPreviewTtlMs(env);
-      let previewDetails;
       try {
-        previewDetails = await persistBankTransferPreview(db, payload, preview, amount, payloadHash, expiresAt);
+        await persistBankTransferPreview(db, payload, preview, amount, payloadHash, expiresAt);
+        if (coupon.applied) {
+          const bound = await bindCouponPreview(env, { code: coupon.code, owner: payload.client_submission_id,
+            payloadHash: couponPayloadHash, previewId: preview.previewId });
+          if (!bound.ok) return couponFailureResponse(bound);
+        }
       } catch (error) {
-        await cancelStripePaymentIntent(requireStripeSecret(env), preview.paymentIntent.id).catch(() => null);
+        if (!coupon.applied) await cancelStripePaymentIntent(requireStripeSecret(env), preview.paymentIntent.id).catch(() => null);
         throw error;
       }
-      const token = await createBankPreviewToken(env, {
-        preview_id: preview.previewId,
-        payment_intent_id: preview.paymentIntent.id,
-        customer_id: preview.customer.id,
-        amount,
-        pricing_version: payload.pricing_version,
-        pricing_effective_at: payload.pricing_effective_at,
-        payload_hash: payloadHash,
-        ...(coupon.applied ? { coupon_context: { applied: true, code: coupon.code, fee_period: "early" } } : {}),
-        expires_at: expiresAt
-      });
-      return json({
-        ok: true,
-        bank_transfer_preview: previewDetails,
-        bank_preview_token: token,
-        expires_at: new Date(expiresAt).toISOString(),
-        turnstile_skipped: Boolean(turnstile.skipped)
-      });
+      return bankPreviewResponse(env, await getBankTransferPreview(db, preview.previewId), preview.paymentIntent, coupon, Boolean(turnstile.skipped));
     }
 
     let bankPreview = null;
@@ -3566,9 +3616,24 @@ async function onRequestPost6({ request, env, waitUntil }) {
       if (bankPaymentIntent.customer !== bankPreview.customer_id || Number(bankPaymentIntent.amount) !== amount || bankPaymentIntent.currency !== "jpy") {
         return badRequest("銀行振込の確認情報とお支払い内容が一致しません。振込先をもう一度確認してください。");
       }
+      if (coupon.applied && action !== "cancel_bank_preview") {
+        const reserved = await reserveCoupon(env, { code: coupon.code, owner: payload.client_submission_id,
+          payloadHash: couponPayloadHash, previewId: bankPreview.preview_id });
+        if (!reserved.ok) return couponFailureResponse(reserved);
+        couponClaim = reserved.claim;
+      }
     } else {
       const turnstile = await verifyTurnstile(payload.turnstile_token, env, request);
       if (!turnstile.ok) return badRequest("Turnstile verification failed.", turnstile.result || turnstile.message);
+      if (coupon.applied) {
+        const reserved = await reserveCoupon(env, { code: coupon.code, owner: payload.client_submission_id,
+          payloadHash: couponPayloadHash });
+        if (!reserved.ok) return couponFailureResponse(reserved);
+        couponClaim = reserved.claim;
+        if (couponClaim.preview_id && !couponClaim.used_at) {
+          return couponFailureResponse({ status: 409, error: "coupon_reserved", message: "銀行振込の確認画面から支払方法を変更してください。" });
+        }
+      }
     }
 
     if (action === "cancel_bank_preview") {
@@ -3576,6 +3641,14 @@ async function onRequestPost6({ request, env, waitUntil }) {
         "SELECT application_id FROM payments WHERE stripe_payment_intent_id = ? AND payment_provider = 'stripe' LIMIT 1"
       ).bind(bankPreview.payment_intent_id).first();
       if (linkedPayment?.application_id || bankPreview.record.application_id) return badRequest("この銀行振込はすでに申込へ確定されています。");
+      if (coupon.applied) {
+        const decision = await db.prepare(
+          `UPDATE bank_transfer_previews SET status = 'cancelling', updated_at = ?
+           WHERE id = ? AND application_id IS NULL AND status IN ('previewed', 'cancelled_cleanup_pending',
+             'funds_received_before_confirmation', 'paid_before_confirmation', 'unreconciled_funds_received') RETURNING id`
+        ).bind(nowIso(), bankPreview.preview_id).first();
+        if (!decision) return json({ ok: false, error: "bank_transfer_confirmation_in_progress", message: "別の手続きを処理中です。少し待ってから確認してください。" }, { status: 409 });
+      }
       const cashBalanceTransactions = await listBankPreviewCashBalanceTransactions(requireStripeSecret(env), bankPreview.customer_id);
       const funding = observedBankPreviewFunding(bankPaymentIntent, cashBalanceTransactions);
       if (funding.has_funds) {
@@ -3589,9 +3662,15 @@ async function onRequestPost6({ request, env, waitUntil }) {
       if (bankPaymentIntent.status !== "canceled") {
         await cancelStripePaymentIntent(requireStripeSecret(env), bankPreview.payment_intent_id);
       }
+      if (coupon.applied) {
+        const cancelled = await retrieveStripePaymentIntent(requireStripeSecret(env), bankPreview.payment_intent_id);
+        if (cancelled.status !== "canceled") throw new Error("Bank preview cancellation was not confirmed.");
+      }
       try {
         await deleteBankTransferPreviewCustomer(requireStripeSecret(env), bankPreview.customer_id);
         await updateBankTransferPreview(db, bankPreview.preview_id, { status: "cancelled" });
+        const released = await releaseCouponReservation(env, { previewId: bankPreview.preview_id });
+        if (!released.ok) throw new Error("Coupon cancellation cleanup failed.");
       } catch (cleanupError) {
         await updateBankTransferPreview(db, bankPreview.preview_id, { status: "cancelled_cleanup_pending" });
         console.error("Cancelled bank preview customer cleanup deferred.", cleanupError);
@@ -3605,6 +3684,8 @@ async function onRequestPost6({ request, env, waitUntil }) {
       ).bind(bankPreview.payment_intent_id).first();
       if (existingPayment?.application_id) {
         const existingApplication = await getApplicationById(db, existingPayment.application_id);
+        const applied = await recordCouponApplication(env, coupon, payload, couponPayloadHash, existingApplication);
+        if (!applied.ok) return couponFailureResponse(applied);
         return json({
           ok: true,
           application: existingApplication,
@@ -3646,6 +3727,8 @@ async function onRequestPost6({ request, env, waitUntil }) {
           throw error;
         }
       }
+      const applied = await recordCouponApplication(env, coupon, payload, couponPayloadHash, application);
+      if (!applied.ok) return couponFailureResponse(applied);
       const linkedPaymentIntent = await updateStripePaymentIntentForApplication(stripeSecret, paymentIntent.id, application);
       const recoveredPayment = await db.prepare(
         "SELECT id FROM payments WHERE stripe_payment_intent_id = ? AND payment_provider = 'stripe' LIMIT 1"
@@ -3699,6 +3782,14 @@ async function onRequestPost6({ request, env, waitUntil }) {
       ).bind(bankPreview.payment_intent_id).first();
       if (linkedPayment?.application_id || bankPreview.record.application_id) return badRequest("この銀行振込はすでに申込へ確定されています。");
       if (bankPaymentIntent.status === "canceled") return badRequest("この確認情報はすでに使用されています。入力画面からやり直してください。");
+      if (coupon.applied) {
+        const decision = await db.prepare(
+          `UPDATE bank_transfer_previews SET status = 'switching', updated_at = ?
+           WHERE id = ? AND application_id IS NULL AND status IN ('previewed',
+             'funds_received_before_confirmation', 'paid_before_confirmation', 'unreconciled_funds_received') RETURNING id`
+        ).bind(nowIso(), bankPreview.preview_id).first();
+        if (!decision) return json({ ok: false, error: "bank_transfer_confirmation_in_progress", message: "別の手続きを処理中です。少し待ってから確認してください。" }, { status: 409 });
+      }
       const cashBalanceTransactions = await listBankPreviewCashBalanceTransactions(requireStripeSecret(env), bankPreview.customer_id);
       const funding = observedBankPreviewFunding(bankPaymentIntent, cashBalanceTransactions);
       if (funding.has_funds) {
@@ -3725,6 +3816,8 @@ async function onRequestPost6({ request, env, waitUntil }) {
       ).bind(payload.client_submission_id).first();
       if (existingApplication?.id) {
         application = await hydrateApplicationLineItems(db, await getApplicationById(db, existingApplication.id));
+        const applied = await recordCouponApplication(env, coupon, payload, couponPayloadHash, application);
+        if (!applied.ok) return couponFailureResponse(applied);
         const existingCheckoutPayment = await db.prepare(
           `SELECT stripe_checkout_session_id
              FROM payments
@@ -3760,6 +3853,8 @@ async function onRequestPost6({ request, env, waitUntil }) {
         getClientMeta(request)
       );
     }
+    const applied = await recordCouponApplication(env, coupon, payload, couponPayloadHash, application);
+    if (!applied.ok) return couponFailureResponse(applied);
     if (application.payment_provider === "stripe") {
       try {
         const { session, metadata } = await createCheckoutSession({
@@ -4227,8 +4322,16 @@ async function onRequestPageStats({ request, env }) {
 async function onRequestCouponAdmin(context) {
   const admin = assertAdmin(context.request, context.env);
   if (!admin.ok) return admin.response;
+  const permissions = couponPermissions(context.request, context.env);
+  if (context.request.method !== "GET" && !permissions.can_manage) {
+    return json({ ok: false, error: "coupon_issuer_required", message: "クーポンの発行・変更は発券担当者のみ操作できます。" }, { status: 403 });
+  }
   try {
-    return await onRequestAdminCoupons({ ...context, actor: admin.actor });
+    const response = await onRequestAdminCoupons({ ...context, actor: admin.actor });
+    if (context.request.method === "GET") {
+      return json({ ...await response.json(), permissions }, { status: response.status });
+    }
+    return response;
   } catch (error) {
     return serverError(error);
   }

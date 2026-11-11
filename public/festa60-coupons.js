@@ -9,6 +9,14 @@ const CODE_PATTERN = /^[a-zA-Z0-9_-]{1,64}$/;
 const MAX_BODY_BYTES = 1024;
 const ADMIN_BODY_BYTES = 4096;
 const COUPON_COLUMNS = "id, code, label, starts_at, expires_at, disabled_at, created_at, updated_at";
+const CLAIM_COLUMNS = "code, owner, payload_hash, preview_id, application_id, application_code, reserved_at, used_at";
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const HASH = /^[0-9a-f]{64}$/i;
+const INTERNAL_ID = /^[a-zA-Z0-9_-]{1,128}$/;
+const CRM_COUPON_SELECT = `SELECT ${COUPON_COLUMNS.split(", ").map((column) => `c.${column}`).join(", ")},
+  CASE WHEN r.used_at IS NOT NULL THEN 'used' WHEN r.code IS NOT NULL THEN 'reserved' ELSE 'unused' END AS usage_state,
+  r.reserved_at, r.used_at, r.application_code
+  FROM festa60_coupons c LEFT JOIN coupon_redemptions r ON r.code = c.code`;
 
 function failure(error, message, status = 400) {
   return { ok: false, status, error, message };
@@ -68,7 +76,7 @@ function evaluateCoupon(normalized, startsAt, expiresAt, now) {
   return { ok: true, applied: true, code: normalized, fee_period: "early" };
 }
 
-export async function resolveEarlyCoupon(env, code, ticketType, now = new Date()) {
+export async function resolveEarlyCoupon(env, code, ticketType, now = new Date(), context = {}) {
   if (code === undefined || code === null || (typeof code === "string" && !code.trim())) {
     return { ok: true, applied: false, code: "" };
   }
@@ -80,6 +88,23 @@ export async function resolveEarlyCoupon(env, code, ticketType, now = new Date()
 
   try {
     if (env?.DB) {
+      const result = await readCouponClaim(env, normalized);
+      if (!result.ok) return result;
+      if (result.claim) {
+        const claim = result.claim;
+        if (typeof context.owner === "string" && UUID.test(context.owner)
+            && claim.owner === context.owner.toLowerCase()) {
+          if (context.payloadHash !== undefined
+              && (typeof context.payloadHash !== "string" || !HASH.test(context.payloadHash)
+                || claim.payload_hash !== context.payloadHash.toLowerCase())) return claimConflict();
+          // A recorded owner can finish/retry the already reserved application,
+          // even after a new-use deadline or CRM stop. No new owner can do so.
+          return { ok: true, applied: true, code: normalized, fee_period: "early" };
+        }
+        return claim.used_at
+          ? failure("coupon_used", "このクーポンはすでに申込に使用されています。", 409)
+          : failure("coupon_reserved", "このクーポンは別の申込で利用手続き中です。", 409);
+      }
       const managed = await env.DB.prepare(
         "SELECT code, starts_at, expires_at, disabled_at FROM festa60_coupons WHERE code = ? LIMIT 1",
       ).bind(normalized).first();
@@ -128,6 +153,118 @@ export async function resolveEarlyCoupon(env, code, ticketType, now = new Date()
   const candidate = configured.get(normalized);
   if (!candidate) return invalidCoupon();
   return evaluateCoupon(normalized, candidate.startsAt, candidate.expiresAt, now);
+}
+
+function claimConflict() {
+  return failure("coupon_conflict", "クーポンの利用情報が一致しません。申込内容を確認してください。", 409);
+}
+
+function claimInput({ code, owner, payloadHash } = {}) {
+  const normalized = normalizeCode(code);
+  if (!normalized || typeof owner !== "string" || !UUID.test(owner)
+      || typeof payloadHash !== "string" || !HASH.test(payloadHash)) return null;
+  return { code: normalized, owner: owner.toLowerCase(), payloadHash: payloadHash.toLowerCase() };
+}
+
+function sameClaim(claim, input) {
+  return claim && claim.owner === input.owner && claim.payload_hash === input.payloadHash;
+}
+
+function uniqueConflict(error) {
+  return /UNIQUE constraint failed:\s*coupon_redemptions\./i.test(String(error?.message ?? ""));
+}
+
+export async function readCouponClaim(env, code) {
+  const normalized = normalizeCode(code);
+  if (!normalized) return claimConflict();
+  try {
+    if (!env?.DB) return invalidConfiguration();
+    const claim = await env.DB.prepare(`SELECT ${CLAIM_COLUMNS} FROM coupon_redemptions WHERE code = ? LIMIT 1`)
+      .bind(normalized).first();
+    return { ok: true, claim: claim ?? null };
+  } catch {
+    return invalidConfiguration();
+  }
+}
+
+export async function reserveCoupon(env, options = {}) {
+  const input = claimInput(options);
+  if (!input || (options.previewId !== undefined && options.previewId !== null
+      && (typeof options.previewId !== "string" || !INTERNAL_ID.test(options.previewId)))) return claimConflict();
+  try {
+    if (!env?.DB) return invalidConfiguration();
+    const inserted = await env.DB.prepare(
+      `INSERT INTO coupon_redemptions (code, owner, payload_hash, preview_id, reserved_at)
+       VALUES (?, ?, ?, ?, ?) ON CONFLICT DO NOTHING RETURNING ${CLAIM_COLUMNS}`,
+    ).bind(input.code, input.owner, input.payloadHash, options.previewId ?? null, new Date().toISOString()).first();
+    const found = await readCouponClaim(env, input.code);
+    if (!found.ok) return found;
+    if (!sameClaim(found.claim, input)) return claimConflict();
+    const claim = found.claim;
+    if (options.previewId !== undefined && options.previewId !== null && claim.preview_id !== options.previewId) {
+      // A retry must not silently turn an in-progress online application into a
+      // bank preview. Preview binding is an explicit verified server operation.
+      return claimConflict();
+    }
+    return { ok: true, claim, acquired: Boolean(inserted) };
+  } catch (error) {
+    return uniqueConflict(error) ? claimConflict() : invalidConfiguration();
+  }
+}
+
+export async function bindCouponPreview(env, options = {}) {
+  const input = claimInput(options);
+  if (!input || typeof options.previewId !== "string" || !INTERNAL_ID.test(options.previewId)) return claimConflict();
+  try {
+    if (!env?.DB) return invalidConfiguration();
+    const updated = await env.DB.prepare(
+      `UPDATE coupon_redemptions SET preview_id = ?
+       WHERE code = ? AND owner = ? AND payload_hash = ? AND used_at IS NULL
+         AND (preview_id IS NULL OR preview_id = ?) RETURNING ${CLAIM_COLUMNS}`,
+    ).bind(options.previewId, input.code, input.owner, input.payloadHash, options.previewId).first();
+    if (updated) return { ok: true, claim: updated };
+    const found = await readCouponClaim(env, input.code);
+    if (!found.ok) return found;
+    return sameClaim(found.claim, input) && found.claim.preview_id === options.previewId
+      ? { ok: true, claim: found.claim } : claimConflict();
+  } catch (error) {
+    return uniqueConflict(error) ? claimConflict() : invalidConfiguration();
+  }
+}
+
+export async function markCouponUsed(env, options = {}) {
+  const input = claimInput(options);
+  if (!input || typeof options.applicationId !== "string" || !INTERNAL_ID.test(options.applicationId)
+      || typeof options.applicationCode !== "string" || !INTERNAL_ID.test(options.applicationCode)) return claimConflict();
+  try {
+    if (!env?.DB) return invalidConfiguration();
+    const updated = await env.DB.prepare(
+      `UPDATE coupon_redemptions
+       SET application_id = ?, application_code = ?, used_at = COALESCE(used_at, ?)
+       WHERE code = ? AND owner = ? AND payload_hash = ?
+         AND ((used_at IS NULL AND application_id IS NULL)
+           OR (application_id = ? AND application_code = ?)) RETURNING ${CLAIM_COLUMNS}`,
+    ).bind(options.applicationId, options.applicationCode, new Date().toISOString(), input.code, input.owner,
+      input.payloadHash, options.applicationId, options.applicationCode).first();
+    return updated ? { ok: true, claim: updated } : claimConflict();
+  } catch (error) {
+    return uniqueConflict(error) ? claimConflict() : invalidConfiguration();
+  }
+}
+
+export async function releaseCouponReservation(env, { previewId } = {}) {
+  if (typeof previewId !== "string" || !INTERNAL_ID.test(previewId)) return claimConflict();
+  try {
+    if (!env?.DB) return invalidConfiguration();
+    // The caller must first verify cancellation and absence of received funds.
+    // Elapsed time alone must never release a bank-transfer reservation.
+    const removed = await env.DB.prepare(
+      "DELETE FROM coupon_redemptions WHERE preview_id = ? AND used_at IS NULL RETURNING code",
+    ).bind(previewId).first();
+    return { ok: true, released: Boolean(removed) };
+  } catch {
+    return invalidConfiguration();
+  }
 }
 
 function json(payload, status = 200, headers = {}) {
@@ -241,7 +378,7 @@ export async function onRequestAdminCoupons({ request, env, params = {}, actor }
   if (method === "GET") {
     try {
       if (!env?.DB) return unavailableAdmin();
-      const result = await env.DB.prepare(`SELECT ${COUPON_COLUMNS} FROM festa60_coupons ORDER BY created_at DESC, id DESC`).all();
+      const result = await env.DB.prepare(`${CRM_COUPON_SELECT} ORDER BY c.created_at DESC, c.id DESC`).all();
       return json({ ok: true, coupons: result.results ?? [] });
     } catch {
       return unavailableAdmin();
@@ -288,7 +425,9 @@ export async function onRequestAdminCoupons({ request, env, params = {}, actor }
         }
         return unavailableAdmin();
       }
-      return created ? json({ ok: true, coupon: created }, 201) : unavailableAdmin();
+      if (!created) return unavailableAdmin();
+      const withUsage = await env.DB.prepare(`${CRM_COUPON_SELECT} WHERE c.id = ?`).bind(created.id).first();
+      return withUsage ? json({ ok: true, coupon: withUsage }, 201) : unavailableAdmin();
     }
 
     if (typeof params.id !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(params.id)) {
@@ -311,7 +450,8 @@ export async function onRequestAdminCoupons({ request, env, params = {}, actor }
        WHERE id = ? AND updated_at = ? RETURNING ${COUPON_COLUMNS}`,
     ).bind(fields.label, fields.starts_at, fields.expires_at, disabledAt, updatedAt, params.id, payload.expected_updated_at).first();
     if (!updated) return adminFailure("coupon_conflict", "他の操作で更新されています。一覧を更新してやり直してください。", 409);
-    return json({ ok: true, coupon: updated });
+    const withUsage = await env.DB.prepare(`${CRM_COUPON_SELECT} WHERE c.id = ?`).bind(updated.id).first();
+    return withUsage ? json({ ok: true, coupon: withUsage }) : unavailableAdmin();
   } catch {
     return unavailableAdmin();
   }

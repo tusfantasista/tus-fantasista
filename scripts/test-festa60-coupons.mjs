@@ -17,7 +17,7 @@ function environment(configuration = JSON.stringify(validEntries)) {
   if (configuration !== undefined) env.FESTA60_EARLY_COUPONS = configuration;
   Object.defineProperties(env, {
     DB: { value: { prepare(sql) {
-      assert.match(sql, /^SELECT code, starts_at, expires_at, disabled_at FROM festa60_coupons WHERE code = \?/);
+      assert.match(sql, /^SELECT (code, starts_at, expires_at, disabled_at FROM festa60_coupons|code, owner, payload_hash, preview_id, application_id, application_code, reserved_at, used_at FROM coupon_redemptions) WHERE code = \?/);
       return { bind() { return { async first() { return null; } }; } };
     } } },
     STRIPE_SECRET_KEY: { get() { forbiddenCalls.stripe += 1; throw new Error("Coupon lookup must not access Stripe"); } },

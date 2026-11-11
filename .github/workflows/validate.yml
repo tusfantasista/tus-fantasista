@@ -43,6 +43,9 @@ jobs:
           node scripts/test-festa60-coupons.mjs
           node scripts/test-festa60-crm-coupons.mjs
           node scripts/test-festa60-coupon-admin.mjs
+          node scripts/test-festa60-coupon-redemptions.mjs
+          node scripts/test-festa60-coupon-access.mjs
+          node scripts/test-festa60-single-coupon-flow.mjs
           node scripts/test-festa60-coupon-pricing.mjs
 
       - name: Check JavaScript syntax
@@ -57,6 +60,7 @@ jobs:
           node --check public/assets/js/festa60-coupon-admin.js
           node --check public/festa60-page-metrics.js
           node --check public/festa60-coupons.js
+          node --check public/festa60-coupon-access.js
           node --check scripts/check-cloudflare-routing.mjs
           node --check scripts/check-cloudflare-protection.mjs
           node --check scripts/test-cloudflare-protection.mjs

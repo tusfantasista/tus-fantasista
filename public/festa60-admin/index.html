@@ -8,11 +8,11 @@
     <title>FESTA 60 申込管理</title>
     <link rel="stylesheet" href="../assets/css/festa60-admin.css?v=20260830-1" />
     <link rel="stylesheet" href="../assets/css/festa60-page-stats.css?v=20261111-2" />
-    <link rel="stylesheet" href="../assets/css/festa60-coupon-admin.css?v=20261111-1" />
+    <link rel="stylesheet" href="../assets/css/festa60-coupon-admin.css?v=20261112-1" />
     <script src="../assets/js/festa60-admin.js?v=20261103-1" defer></script>
     <script type="module" src="../assets/js/festa60-video-stats.js?v=20261111-1"></script>
     <script type="module" src="../assets/js/festa60-page-stats.js?v=20261111-2"></script>
-    <script type="module" src="../assets/js/festa60-coupon-admin.js?v=20261111-1"></script>
+    <script type="module" src="../assets/js/festa60-coupon-admin.js?v=20261112-1"></script>
   </head>
   <body class="admin-page">
     <div id="environment-banner" class="admin-environment" hidden>TEST環境 / Cloudflare Pages Preview / 本番データではありません</div>
@@ -204,9 +204,10 @@
           </div>
           <button class="admin-button" type="button" data-coupon-refresh>一覧を更新</button>
         </div>
-        <p class="admin-definition">超早期料金（本人の参加費に適用）を利用できるコードを発行します。同伴者・欠席寄付は対象外です。有効期間内の利用回数制限はありません。表示・入力日時はすべて日本時間です。</p>
+        <p class="admin-definition">超早期料金（本人の参加費に適用）を利用できるコードを発行します。1コードにつき1申込に限り利用でき、同伴者・欠席寄付は対象外です。使用済みは申込に適用済みであることを示し、入金確認とは別です。表示・入力日時はすべて日本時間です。</p>
+        <p class="admin-message" role="status" aria-live="polite" data-coupon-permission-message hidden></p>
         <p class="coupon-admin__note">銀行振込で確認済みの金額は、見積もりの有効期限まで保持されます。</p>
-        <div class="admin-panel">
+        <div class="admin-panel" data-coupon-create-panel hidden>
           <h3>新しく発行する</h3>
           <form data-coupon-create>
             <fieldset class="coupon-admin__fields" data-coupon-lock>

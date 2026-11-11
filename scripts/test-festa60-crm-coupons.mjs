@@ -20,6 +20,7 @@ const database = new DatabaseSync(":memory:");
 const migration = await readFile(new URL("../migrations/20261111_add_crm_coupons.sql", import.meta.url), "utf8");
 database.exec(migration);
 database.exec(migration); // Applying the additive migration twice is harmless.
+database.exec(await readFile(new URL("../migrations/20261111_add_coupon_redemptions.sql", import.meta.url), "utf8"));
 function statement(sql, values = []) {
   return {
     bind(...boundValues) { return statement(sql, boundValues); },
@@ -78,7 +79,8 @@ function lookup(code, at = clock, requestEnv = env) {
   return resolveEarlyCoupon(requestEnv, code, "obog__gold", new Date(at));
 }
 function stored(id) {
-  return { ...database.prepare("SELECT * FROM festa60_coupons WHERE id = ?").get(id) };
+  return { ...database.prepare("SELECT * FROM festa60_coupons WHERE id = ?").get(id),
+    usage_state: "unused", reserved_at: null, used_at: null, application_code: null };
 }
 function count() { return database.prepare("SELECT COUNT(*) AS n FROM festa60_coupons").get().n; }
 

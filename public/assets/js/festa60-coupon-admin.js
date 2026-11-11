@@ -24,6 +24,12 @@ export function isoToJapanLocal(value) {
 }
 
 export function couponState(coupon, now = Date.now()) {
+  if (coupon.usage_state === "used") return { key: "used", label: "使用済み" };
+  if (coupon.usage_state === "reserved") return { key: "reserved", label: "手続き中" };
+  return availabilityState(coupon, now);
+}
+
+function availabilityState(coupon, now = Date.now()) {
   if (coupon.disabled_at) return { key: "disabled", label: "停止中" };
   if (Date.parse(coupon.expires_at) <= now) return { key: "expired", label: "期限切れ" };
   if (coupon.starts_at && Date.parse(coupon.starts_at) > now) return { key: "scheduled", label: "開始前" };
@@ -36,7 +42,11 @@ function validCoupon(coupon) {
     && (coupon.label === null || coupon.label === undefined || typeof coupon.label === "string")
     && Number.isFinite(Date.parse(coupon.expires_at)) && Number.isFinite(Date.parse(coupon.updated_at))
     && (!coupon.starts_at || Number.isFinite(Date.parse(coupon.starts_at)))
-    && (!coupon.disabled_at || Number.isFinite(Date.parse(coupon.disabled_at)));
+    && (!coupon.disabled_at || Number.isFinite(Date.parse(coupon.disabled_at)))
+    && (coupon.usage_state === undefined || coupon.usage_state === null || ["unused", "reserved", "used"].includes(coupon.usage_state))
+    && [coupon.reserved_at, coupon.used_at].every((value) => value === undefined || value === null
+      || (typeof value === "string" && Number.isFinite(Date.parse(value))))
+    && (coupon.application_code === undefined || coupon.application_code === null || typeof coupon.application_code === "string");
 }
 
 function formatDate(value, empty = "指定なし（発行後から）") {
@@ -69,10 +79,13 @@ async function requestApi(method, path = "", payload) {
       headers: { accept: "application/json", ...(payload === undefined ? {} : { "content-type": "application/json" }) },
       ...(payload === undefined ? {} : { body: JSON.stringify(payload) }),
     });
+    const result = await response.json().catch(() => null);
+    if (response.status === 403 && result?.error === "coupon_issuer_required") {
+      throw requestError("クーポンの発行・変更権限がありません。", response.status, result.error);
+    }
     if (response.status === 401 || response.status === 403) {
       throw requestError("認証を確認できません。ページを再読み込みして認証してください。", response.status, "authentication");
     }
-    const result = await response.json().catch(() => null);
     if (!response.ok || !result?.ok) {
       const fallback = response.status === 409
         ? "内容が更新されたか、同じコードが存在します。一覧を更新して確認してください。"
@@ -97,6 +110,15 @@ async function requestApi(method, path = "", payload) {
 
 export function initCouponAdmin(root) {
   const createForm = root.querySelector("[data-coupon-create]");
+  const createPanel = root.querySelector("[data-coupon-create-panel]") || createForm;
+  let permissionMessage = root.querySelector("[data-coupon-permission-message]");
+  if (!permissionMessage) {
+    permissionMessage = element("p", "admin-message");
+    permissionMessage.setAttribute("data-coupon-permission-message", "");
+    permissionMessage.setAttribute("role", "status");
+    permissionMessage.setAttribute("aria-live", "polite");
+    root.prepend(permissionMessage);
+  }
   const refreshButton = root.querySelector("[data-coupon-refresh]");
   const list = root.querySelector("[data-coupon-list]");
   const listMessage = root.querySelector("[data-coupon-list-message]");
@@ -109,11 +131,23 @@ export function initCouponAdmin(root) {
   const cards = new Map();
   let busy = false;
   let needsRefresh = false;
+  let permissions = { can_issue: false, can_manage: false };
 
   function updateControls() {
     root.setAttribute("aria-busy", String(busy));
     refreshButton.disabled = busy;
-    for (const control of root.querySelectorAll("[data-coupon-lock]")) control.disabled = busy || needsRefresh;
+    createPanel.hidden = !permissions.can_issue;
+    const issueControls = new Set(createForm.querySelectorAll("[data-coupon-lock]"));
+    for (const control of root.querySelectorAll("[data-coupon-lock]")) {
+      const allowed = issueControls.has(control) ? permissions.can_issue : permissions.can_manage;
+      control.disabled = busy || needsRefresh || !allowed;
+    }
+    for (const editor of root.querySelectorAll("[data-coupon-editor]")) editor.hidden = !permissions.can_manage;
+    for (const toggle of root.querySelectorAll("[data-coupon-toggle]")) toggle.hidden = !permissions.can_manage;
+    setMessage(permissionMessage, permissions.can_issue && permissions.can_manage ? ""
+      : !permissions.can_issue && !permissions.can_manage
+        ? "クーポンの発行・変更は発券担当者のみ操作できます。使用状況は閲覧できます。"
+        : `クーポンの${permissions.can_issue ? "変更" : "発行"}は発券担当者のみ操作できます。使用状況は閲覧できます。`);
   }
 
   async function copyCode(code, button, message) {
@@ -167,15 +201,25 @@ export function initCouponAdmin(root) {
     const identity = element("div", "coupon-admin__identity");
     const title = element("h3", "coupon-admin__code", coupon.code);
     const state = couponState(coupon);
-    const badge = element("span", `admin-status coupon-admin__state--${state.key}`, state.label);
-    identity.append(title, badge);
+    const usage = ["used", "reserved"].includes(state.key) ? state : { key: "unused", label: "未使用" };
+    card.setAttribute("data-coupon-usage", usage.key);
+    const availability = availabilityState(coupon);
+    identity.append(title, element("span", `admin-status coupon-admin__state--${usage.key}`, usage.label));
+    if (usage.key === "unused" || availability.key !== "active") {
+      identity.append(element("span", `admin-status coupon-admin__state--${availability.key}`, availability.label));
+    }
     const copy = element("button", "admin-button", "コードをコピー");
     copy.type = "button";
     copy.setAttribute("aria-label", `${coupon.code} をコピー`);
     heading.append(identity, copy);
     const memo = element("p", "coupon-admin__memo", coupon.label || "管理メモなし");
     const dates = element("dl", "coupon-admin__dates");
-    for (const [label, value] of [["適用開始", formatDate(coupon.starts_at)], ["有効期限", formatDate(coupon.expires_at)]]) {
+    const usageDate = usage.key === "used" ? formatDate(coupon.used_at, "記録なし")
+      : usage.key === "reserved" ? "手続き中（未確定）" : "未使用";
+    const rows = [["適用開始", formatDate(coupon.starts_at)], ["有効期限", formatDate(coupon.expires_at)],
+      ["利用日時", usageDate], ["受付番号", coupon.application_code || "—"]];
+    if (usage.key === "reserved") rows.push(["手続開始", formatDate(coupon.reserved_at, "記録なし")]);
+    for (const [label, value] of rows) {
       dates.append(element("dt", "", label), element("dd", "", value));
     }
     const message = element("p", "admin-message");
@@ -184,6 +228,7 @@ export function initCouponAdmin(root) {
     message.setAttribute("aria-live", "polite");
 
     const edit = element("details", "coupon-admin__editor");
+    edit.setAttribute("data-coupon-editor", "");
     edit.append(element("summary", "", "期限・管理メモを変更"));
     const form = element("form");
     const fields = element("fieldset", "coupon-admin__fields");
@@ -195,7 +240,7 @@ export function initCouponAdmin(root) {
     const expires = editField(grid, { label: "有効期限（必須・日本時間）", name: "expires_at", type: "datetime-local", value: isoToJapanLocal(coupon.expires_at), required: true });
     fields.append(grid);
     let enableOnSave;
-    if (coupon.disabled_at) {
+    if (coupon.disabled_at && usage.key !== "used") {
       const checkboxLabel = element("label", "coupon-admin__checkbox");
       enableOnSave = element("input");
       enableOnSave.type = "checkbox";
@@ -210,18 +255,27 @@ export function initCouponAdmin(root) {
     edit.append(form);
 
     const actions = element("div", "coupon-admin__actions");
-    const toggle = element("button", "admin-button", coupon.disabled_at ? "停止を解除" : "利用を停止");
-    toggle.type = "button";
-    toggle.setAttribute("data-coupon-lock", "");
-    actions.append(toggle);
-    if (Date.parse(coupon.expires_at) <= Date.now()) {
+    let toggle;
+    if (usage.key === "used") {
+      actions.append(element("p", "coupon-admin__note", "このコードは使用済みです。期限などを変更しても再利用はできません。"));
+    } else {
+      toggle = element("button", "admin-button", coupon.disabled_at ? "停止を解除" : "利用を停止");
+      toggle.type = "button";
+      toggle.setAttribute("data-coupon-lock", "");
+      toggle.setAttribute("data-coupon-toggle", "");
+      actions.append(toggle);
+    }
+    if (usage.key === "reserved") {
+      actions.append(element("p", "coupon-admin__note", "申込手続き中のため、別の申込には使えません。"));
+    }
+    if (usage.key !== "used" && Date.parse(coupon.expires_at) <= Date.now()) {
       actions.append(element("p", "coupon-admin__note", "期限切れです。再び利用する場合は期限も延長してください。"));
     }
     card.append(heading, memo, dates, edit, actions, message);
     copy.addEventListener("click", () => copyCode(coupon.code, copy, message));
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
-      if (busy || needsRefresh || !form.reportValidity()) return;
+      if (busy || needsRefresh || !permissions.can_manage || !form.reportValidity()) return;
       let payload;
       try {
         payload = { label: label.value.trim(), starts_at: starts.value ? japanLocalToIso(starts.value) : null,
@@ -234,8 +288,8 @@ export function initCouponAdmin(root) {
       }
       await mutateCoupon(coupon, payload, card, "クーポンを更新しました。");
     });
-    toggle.addEventListener("click", async () => {
-      if (busy || needsRefresh) return;
+    toggle?.addEventListener("click", async () => {
+      if (busy || needsRefresh || !permissions.can_manage) return;
       await mutateCoupon(coupon, { enabled: Boolean(coupon.disabled_at), expected_updated_at: coupon.updated_at }, card,
         coupon.disabled_at ? "停止を解除しました。有効期間をご確認ください。" : "クーポンの利用を停止しました。");
     });
@@ -243,6 +297,7 @@ export function initCouponAdmin(root) {
   }
 
   async function mutateCoupon(coupon, payload, card, successMessage) {
+    if (!permissions.can_manage) return;
     busy = true;
     updateControls();
     const message = card.querySelector('[role="status"]');
@@ -254,6 +309,10 @@ export function initCouponAdmin(root) {
       next.querySelector("h3").setAttribute("tabindex", "-1");
       next.querySelector("h3").focus({ preventScroll: true });
     } catch (error) {
+      if (error.status === 401 || error.status === 403) {
+        permissions = { can_issue: false, can_manage: false };
+        setMessage(listMessage, error.message, true);
+      }
       if (error.status === 409 || error.status === 404 || error.uncertain) needsRefresh = true;
       setMessage(message, error.status === 409
         ? "他の管理者が更新した可能性があります。入力は保持しています。一覧を更新し、最新の内容でやり直してください。"
@@ -272,6 +331,7 @@ export function initCouponAdmin(root) {
     setMessage(listMessage, "クーポン一覧を取得しています。");
     try {
       const result = await requestApi("GET");
+      permissions = { can_issue: result.permissions?.can_issue === true, can_manage: result.permissions?.can_manage === true };
       cards.clear();
       list.replaceChildren();
       for (const coupon of result.coupons) upsertCoupon(coupon);
@@ -282,6 +342,7 @@ export function initCouponAdmin(root) {
       if (recovering) setMessage(createMessage, "最新の一覧を取得しました。発行・変更済みか確認してから操作してください。");
       updated.textContent = `最終更新 ${dateFormatter.format(new Date())}（日本時間）`;
     } catch (error) {
+      permissions = { can_issue: false, can_manage: false };
       needsRefresh = true;
       setMessage(listMessage, `${error.message}${cards.size ? " 表示は前回取得した内容です。" : ""}`, true);
       updated.textContent = "取得失敗";
@@ -293,7 +354,7 @@ export function initCouponAdmin(root) {
 
   createForm.addEventListener("submit", async (event) => {
     event.preventDefault();
-    if (busy || needsRefresh || !createForm.reportValidity()) return;
+    if (busy || needsRefresh || !permissions.can_issue || !createForm.reportValidity()) return;
     const field = (name) => createForm.elements.namedItem(name).value.trim();
     let payload;
     try {
@@ -318,6 +379,10 @@ export function initCouponAdmin(root) {
       setMessage(createMessage, "クーポンを発行しました。下のコードをコピーしてご案内できます。");
       issuedCode.focus({ preventScroll: true });
     } catch (error) {
+      if (error.status === 401 || error.status === 403) {
+        permissions = { can_issue: false, can_manage: false };
+        setMessage(listMessage, error.message, true);
+      }
       if (error.uncertain) needsRefresh = true;
       setMessage(createMessage, error.code === "coupon_code_exists"
         ? "このコードはすでに発行されています。別のコードを指定するか、空欄にして自動生成してください。"

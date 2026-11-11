@@ -89,6 +89,9 @@
 [data-coupon-admin] .coupon-admin__state--scheduled { color: var(--admin-blue); background: var(--admin-blue-soft); }
 [data-coupon-admin] .coupon-admin__state--expired { color: var(--admin-orange); background: var(--admin-orange-soft); }
 [data-coupon-admin] .coupon-admin__state--disabled { color: var(--admin-muted); background: #eceff2; }
+[data-coupon-admin] .coupon-admin__state--unused { color: var(--admin-blue); background: var(--admin-blue-soft); }
+[data-coupon-admin] .coupon-admin__state--reserved { color: var(--admin-orange); background: var(--admin-orange-soft); }
+[data-coupon-admin] .coupon-admin__state--used { color: #fff; background: var(--admin-charcoal); }
 
 [data-coupon-admin] .coupon-admin__dates {
   display: grid;
