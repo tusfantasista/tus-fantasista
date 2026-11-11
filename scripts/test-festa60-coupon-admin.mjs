@@ -79,7 +79,7 @@ function makeNode(tag, attr) {
   return node;
 }
 
-function fixture() {
+function fixture({ generation = true } = {}) {
   const root = makeNode("section", "data-coupon-admin");
   const createPanel = makeNode("div", "data-coupon-create-panel");
   const form = makeNode("form", "data-coupon-create");
@@ -89,6 +89,9 @@ function fixture() {
     input.name = name;
     input.required = name === "expires_at";
     fieldset.append(input);
+  }
+  if (generation) {
+    fieldset.append(makeNode("button", "data-coupon-generate"), makeNode("p", "data-coupon-generated"));
   }
   form.append(fieldset);
   createPanel.append(form);
@@ -103,9 +106,17 @@ function fixture() {
 const originalDocument = globalThis.document;
 const originalFetch = globalThis.fetch;
 const navigatorDescriptor = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+const cryptoDescriptor = Object.getOwnPropertyDescriptor(globalThis, "crypto");
 const requests = [];
 const responses = [];
 const copied = [];
+let randomCalls = 0;
+const localCrypto = { getRandomValues(bytes) {
+  assert.equal(bytes.byteLength, 8, "generation uses 64 bits of secure random data");
+  randomCalls += 1;
+  for (let index = 0; index < bytes.length; index += 1) bytes[index] = (randomCalls - 1) * 16 + index;
+  return bytes;
+} };
 const tick = async () => { await new Promise((resolve) => setImmediate(resolve)); };
 const response = (body, status = 200) => ({ ok: status < 400, status, async json() { return body; } });
 const listResponse = (coupons, permissions = { can_issue: true, can_manage: true }) => response({ ok: true, coupons, permissions });
@@ -114,6 +125,7 @@ let ui;
 try {
   globalThis.document = { createElement: (tag) => new Node(tag), querySelector: () => null };
   Object.defineProperty(globalThis, "navigator", { configurable: true, value: { clipboard: { async writeText(value) { copied.push(value); } } } });
+  Object.defineProperty(globalThis, "crypto", { configurable: true, value: localCrypto });
   globalThis.fetch = async (url, options) => {
     requests.push({ url, options, body: options.body ? JSON.parse(options.body) : undefined });
     assert.equal(options.credentials, "same-origin");
@@ -136,6 +148,22 @@ try {
   assert.equal(ui.find("data-coupon-create-panel").hidden, false);
   assert.equal(ui.find("data-coupon-permission-message").hidden, true);
 
+  const beforeGeneration = requests.length;
+  await ui.find("data-coupon-generate").emit("click");
+  assert.equal(ui.field("code").value, "F60-0001020304050607");
+  assert.equal(ui.field("expires_at").value, "", "generation does not invent an expiration date");
+  assert.match(ui.find("data-coupon-generated").textContent, /有効期限を設定して「クーポンを発行」/);
+  assert.equal(requests.length, beforeGeneration, "generation does not save or request a payment");
+  await ui.find("data-coupon-generate").emit("click");
+  assert.equal(ui.field("code").value, "F60-1011121314151617");
+  const previousCode = ui.field("code").value;
+  Object.defineProperty(globalThis, "crypto", { configurable: true, value: {} });
+  await ui.find("data-coupon-generate").emit("click");
+  assert.equal(ui.field("code").value, previousCode, "failure never replaces a code with an unsafe fallback");
+  assert.match(ui.find("data-coupon-generated").textContent, /安全なランダムコードを生成できません/);
+  Object.defineProperty(globalThis, "crypto", { configurable: true, value: localCrypto });
+  ui.field("code").value = "";
+
   // Only one POST can be in flight, even when a submit event is repeated.
   ui.field("label").value = '<img src=x onerror="alert(1)">';
   ui.field("expires_at").value = "2027-01-31T23:59:59";
@@ -148,6 +176,9 @@ try {
   assert.equal(requests.length, afterIssue, "duplicate submit never makes another request");
   assert.equal(ui.fieldset.disabled, true);
   assert.equal(ui.find("data-coupon-refresh").disabled, true);
+  const randomBeforeBusy = randomCalls;
+  await ui.find("data-coupon-generate").emit("click");
+  assert.equal(randomCalls, randomBeforeBusy, "generation is rejected while a request is in flight");
   const autoCoupon = { ...coupon, label: ui.field("label").value };
   finishIssue(successResponse(autoCoupon, 201));
   await firstIssue;
@@ -156,6 +187,7 @@ try {
   assert.equal(ui.find("data-coupon-issued-code").textContent, coupon.code);
   assert.equal(ui.find("data-coupon-issued").hidden, false);
   assert.equal(ui.field("expires_at").value, "", "successful issue clears the form");
+  assert.equal(ui.find("data-coupon-generated").hidden, true);
   assert.equal(ui.find("data-coupon-list").querySelectorAll("img").length, 0, "memo text never creates HTML");
   assert.ok(ui.find("data-coupon-list").textContent.includes(autoCoupon.label));
   assert.equal(ui.find("data-coupon-list").querySelector('[data-coupon-usage="unused"]')?.tagName, "article", "old rows without usage fields are shown as unused");
@@ -171,6 +203,9 @@ try {
   await editor.emit("submit");
   assert.equal(requests.at(-1).body.expected_updated_at, coupon.updated_at);
   assert.equal(editor.elements.namedItem("label").value, "編集中のメモ");
+  const randomBeforeRefresh = randomCalls;
+  await ui.find("data-coupon-generate").emit("click");
+  assert.equal(randomCalls, randomBeforeRefresh, "generation is rejected while current server state must be refreshed");
   assert.match(card.querySelector('[role="status"]').textContent, /一覧を更新/);
   const afterConflict = requests.length;
   await editor.emit("submit");
@@ -281,6 +316,9 @@ try {
     assert.equal(readerCard.querySelector("[data-coupon-toggle]").disabled, true);
     reader.field("expires_at").value = "2027-01-31T23:59";
     const beforeReaderEvents = requests.length;
+    const beforeReaderRandom = randomCalls;
+    await reader.find("data-coupon-generate").emit("click");
+    assert.equal(randomCalls, beforeReaderRandom, "non-issuers cannot generate codes through a hidden event handler");
     await reader.form.emit("submit");
     await readerCard.querySelector("form").emit("submit");
     await readerCard.querySelector("[data-coupon-toggle]").emit("click");
@@ -308,6 +346,29 @@ try {
   assert.equal(revoked.find("data-coupon-list").querySelector("[data-coupon-editor]").hidden, true);
   assert.match(revoked.find("data-coupon-list-message").textContent, /発行・変更権限がありません/);
 
+  responses.push(listResponse([]));
+  const generatedUi = fixture();
+  initCouponAdmin(generatedUi.root);
+  await tick();
+  await generatedUi.find("data-coupon-generate").emit("click");
+  const generatedCode = generatedUi.field("code").value;
+  assert.match(generatedCode, /^F60-[A-F0-9]{16}$/);
+  const beforeDate = requests.length;
+  await generatedUi.form.emit("submit");
+  assert.equal(requests.length, beforeDate, "the generated code still needs a required expiration before issue");
+  generatedUi.field("code").value = `${generatedCode}_EDITED`;
+  generatedUi.field("expires_at").value = "2027-01-31T23:59";
+  responses.push(successResponse({ ...coupon, code: generatedUi.field("code").value }, 201));
+  await generatedUi.form.emit("submit");
+  assert.equal(requests.at(-1).body.code, `${generatedCode}_EDITED`, "the preview code remains editable and is saved only on issue");
+  assert.equal(generatedUi.find("data-coupon-issued-code").textContent, `${generatedCode}_EDITED`);
+
+  responses.push(listResponse([]));
+  const legacyHtml = fixture({ generation: false });
+  initCouponAdmin(legacyHtml.root);
+  await tick();
+  assert.equal(legacyHtml.fieldset.disabled, false, "old HTML without the new button/status remains functional");
+
   responses.push(response(null, 401));
   const unauthenticated = fixture();
   initCouponAdmin(unauthenticated.root);
@@ -317,14 +378,16 @@ try {
   assert.equal(unauthenticated.find("data-coupon-refresh").disabled, false);
 
   assert.equal(responses.length, 0);
-  assert.equal(requests.filter((request) => request.options.method === "POST").length, 4);
+  assert.equal(requests.filter((request) => request.options.method === "POST").length, 5);
   const source = await readFile(new URL("../public/assets/js/festa60-coupon-admin.js", import.meta.url), "utf8");
   assert.doesNotMatch(source, /innerHTML|outerHTML|insertAdjacentHTML|localStorage|sessionStorage|document\.cookie/);
-  console.log("PASS coupon admin: Japan-time conversion, issue/copy/edit/stop/resume, single-use usage, dates/application codes, legacy compatibility, fail-closed issuer permissions and read-only copying, stale guards, duplicate prevention, safe text, empty/auth/error states; no external calls");
+  console.log("PASS coupon admin: secure random preview without issuance, Japan-time dates, issue/copy/edit/stop/resume, single-use usage, legacy compatibility, issuer permissions, stale guards, duplicate prevention, safe text and error states; no external calls");
 } finally {
   if (originalDocument === undefined) delete globalThis.document;
   else globalThis.document = originalDocument;
   globalThis.fetch = originalFetch;
   if (navigatorDescriptor) Object.defineProperty(globalThis, "navigator", navigatorDescriptor);
   else delete globalThis.navigator;
+  if (cryptoDescriptor) Object.defineProperty(globalThis, "crypto", cryptoDescriptor);
+  else delete globalThis.crypto;
 }

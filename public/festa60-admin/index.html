@@ -12,7 +12,7 @@
     <script src="../assets/js/festa60-admin.js?v=20261103-1" defer></script>
     <script type="module" src="../assets/js/festa60-video-stats.js?v=20261111-1"></script>
     <script type="module" src="../assets/js/festa60-page-stats.js?v=20261111-2"></script>
-    <script type="module" src="../assets/js/festa60-coupon-admin.js?v=20261112-1"></script>
+    <script type="module" src="../assets/js/festa60-coupon-admin.js?v=20261112-2"></script>
   </head>
   <body class="admin-page">
     <div id="environment-banner" class="admin-environment" hidden>TEST環境 / Cloudflare Pages Preview / 本番データではありません</div>
@@ -216,6 +216,8 @@
                 <div class="admin-field">
                   <label for="coupon-admin-code">コード（任意）</label>
                   <input id="coupon-admin-code" name="code" maxlength="64" pattern="[A-Za-z0-9_-]{1,64}" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="coupon-admin-code-help" />
+                  <button class="admin-button" type="button" data-coupon-generate>ランダム生成</button>
+                  <p class="admin-message" role="status" aria-live="polite" data-coupon-generated hidden></p>
                   <p id="coupon-admin-code-help" class="coupon-admin__note">空欄なら自動生成します。指定する場合は半角英数字・ハイフン・アンダースコアを使用してください。発行後のコード変更はできません。</p>
                 </div>
                 <div class="admin-field">

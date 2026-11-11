@@ -128,6 +128,8 @@ export function initCouponAdmin(root) {
   const issued = root.querySelector("[data-coupon-issued]");
   const issuedCode = root.querySelector("[data-coupon-issued-code]");
   const issuedCopy = root.querySelector("[data-coupon-issued-copy]");
+  const generateButton = root.querySelector("[data-coupon-generate]");
+  const generatedMessage = root.querySelector("[data-coupon-generated]");
   const cards = new Map();
   let busy = false;
   let needsRefresh = false;
@@ -137,6 +139,7 @@ export function initCouponAdmin(root) {
     root.setAttribute("aria-busy", String(busy));
     refreshButton.disabled = busy;
     createPanel.hidden = !permissions.can_issue;
+    if (generateButton) generateButton.disabled = busy || needsRefresh || !permissions.can_issue;
     const issueControls = new Set(createForm.querySelectorAll("[data-coupon-lock]"));
     for (const control of root.querySelectorAll("[data-coupon-lock]")) {
       const allowed = issueControls.has(control) ? permissions.can_issue : permissions.can_manage;
@@ -376,6 +379,7 @@ export function initCouponAdmin(root) {
       issuedCode.textContent = result.coupon.code;
       issued.hidden = false;
       createForm.reset();
+      if (generatedMessage) setMessage(generatedMessage, "");
       setMessage(createMessage, "クーポンを発行しました。下のコードをコピーしてご案内できます。");
       issuedCode.focus({ preventScroll: true });
     } catch (error) {
@@ -390,6 +394,21 @@ export function initCouponAdmin(root) {
     } finally {
       busy = false;
       updateControls();
+    }
+  });
+  generateButton?.addEventListener("click", () => {
+    if (busy || needsRefresh || !permissions.can_issue) return;
+    const message = generatedMessage || createMessage;
+    try {
+      if (typeof globalThis.crypto?.getRandomValues !== "function") throw new Error("secure_random_unavailable");
+      const random = globalThis.crypto.getRandomValues(new Uint8Array(8));
+      const code = `F60-${Array.from(random, (byte) => byte.toString(16).padStart(2, "0")).join("").toUpperCase()}`;
+      const input = createForm.elements.namedItem("code");
+      input.value = code;
+      setMessage(message, "コードを生成しました。有効期限を設定して「クーポンを発行」を押してください。");
+      input.focus({ preventScroll: true });
+    } catch {
+      setMessage(message, "安全なランダムコードを生成できませんでした。対応するブラウザでお試しいただくか、コードを手動で入力してください。", true);
     }
   });
   issuedCopy.addEventListener("click", () => copyCode(issuedCode.textContent, issuedCopy, createMessage));
