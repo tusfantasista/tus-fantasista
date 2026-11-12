@@ -2238,6 +2238,7 @@
     <link rel="stylesheet" href="../assets/css/festa60-film-hero.css?v=20260830-11">
     <link rel="stylesheet" href="../assets/css/festa60-keyvisual.css?v=20261012-4">
     <link rel="stylesheet" href="../assets/css/festa60-home-compact.css?v=20261111-2">
+    <link rel="stylesheet" href="../assets/css/festa60-shorts.css?v=20261113-1">
   </head>
   <body><div class="page">
       <header class="header">
@@ -2332,19 +2333,44 @@
           </div>
         </section>
 
-        <section id="pr-video" class="festa-pr-video" aria-labelledby="pr-video-title">
+        <section id="pr-video" class="festa-pr-video" aria-labelledby="pr-video-title" data-festa-short-home>
           <div class="wrap">
             <div class="section-head">
               <h2 id="pr-video-title">60周年記念FESTA <span>PR動画</span></h2>
-              <p>創部から、世代を超えて踊る仲間が集う<time datetime="2027-02-11">2月11日</time>のFESTAへ。</p>
+              <p>再会、デモンストレーション、ダンスタイム。<time datetime="2027-02-11">2月11日</time>が楽しみになる一篇を。</p>
             </div>
-            <video controls playsinline preload="none" width="1920" height="1080"
-                   poster="./media/festa60-pr-v21-poster.webp"
-                   aria-labelledby="pr-video-title" aria-describedby="pr-video-info">
-              <source src="./media/festa60-pr-v22-synced-stream/index.m3u8" type="application/vnd.apple.mpegurl">
-              <source src="./media/festa60-pr-v21.mp4?v=22" type="video/mp4">
-            </video>
-            <p class="festa-pr-video__info" id="pr-video-info">1分55秒・音声あり <a href="./media/festa60-pr-v21.mp4?v=22" download="FESTA60-PR.mp4">MP4をダウンロード</a></p>
+            <div class="festa-short-feature">
+              <video data-short-player controls playsinline preload="none" width="1080" height="1920"
+                     poster="./media/shorts/pr01.webp" aria-labelledby="pr-video-title pr-short-title" aria-describedby="pr-video-info">
+                <source src="./media/shorts/pr01.mp4" type="video/mp4">
+              </video>
+              <div class="festa-short-feature__copy">
+                <p class="eyebrow">2月11日、また一緒に。</p>
+                <h3 id="pr-short-title" data-short-title>あの時の仲間と、もう一度。</h3>
+                <p>踊る楽しさも、仲間に会う楽しさも。世代を超えて集まる60周年FESTAの一日をご紹介します。</p>
+                <p class="festa-pr-video__info" id="pr-video-info" data-short-info>30秒・音声あり</p>
+                <p class="festa-short-notice">再生ボタンを押すと音が出ます。</p>
+                <div class="cta-row">
+                  <a class="btn btn--primary" href="../festa60-register/">2月11日の参加申込へ</a>
+                  <a class="btn btn--ghost" href="./shorts/?kind=pr">ほかのPR動画を見る（10本）</a>
+                  <a class="btn btn--ghost" href="./shorts/?kind=history">60年の物語を見る（14本）</a>
+                </div>
+                <div class="festa-short-actions">
+                  <button class="festa-short-button" type="button" data-short-random hidden>別のPRを見る</button>
+                  <a href="./shorts/?video=pr01" data-short-share>この動画の共有用リンク</a>
+                  <a href="./media/shorts/pr01.mp4" data-short-download download>MP4を保存</a>
+                </div>
+              </div>
+            </div>
+            <details id="pr-video-full" class="festa-short-full">
+              <summary>全体版を見る（1分55秒・音声あり）</summary>
+              <video controls playsinline preload="none" width="1920" height="1080" data-video-id="festa60-pr"
+                     poster="./media/festa60-pr-v21-poster.webp" aria-label="60周年記念FESTA PR動画 全体版（1分55秒）">
+                <source src="./media/festa60-pr-v22-synced-stream/index.m3u8" type="application/vnd.apple.mpegurl">
+                <source src="./media/festa60-pr-v21.mp4?v=22" type="video/mp4">
+              </video>
+              <p class="festa-pr-video__info">1分55秒・音声あり <a href="./media/festa60-pr-v21.mp4?v=22" download="FESTA60-PR.mp4">全体版MP4を保存</a></p>
+            </details>
             <p class="festa-pr-video__notice">動画内に掲載を希望されない写真がありましたら、<a href="https://tus-fantasista.pages.dev/contact/">お問い合わせフォーム</a>からご連絡ください。該当の写真を確認のうえ、動画から削除いたします。</p>
           </div>
         </section>
@@ -2392,6 +2418,10 @@
               <a href="./news/">お知らせ一覧</a>
             </div>
             <div class="latest-news__list" data-nosnippet>
+              <article class="latest-news__item">
+                <time datetime="2026-11-13">2026年11月13日</time>
+                <h3><a href="./news/#festa60-short-films">PR動画10本・60年の物語14本を公開しました</a></h3>
+              </article>
               <article class="latest-news__item">
                 <time datetime="2026-11-11">2026年11月11日</time>
                 <h3><a href="./news/#festa60-pr-video">60周年記念FESTAのPR動画を公開しました</a></h3>
@@ -2923,7 +2953,7 @@
     <script src="../assets/js/festa60-keyvisual-motion.js?v=20261002-2" defer=""></script>
     <script type="module" src="../assets/js/festa60-public-summary.js?v=20261108-1"></script>
     <script type="module" src="../assets/js/festa60-event-schema.js?v=20261013-1"></script>
-    <script type="module" src="../assets/js/festa60-video-metrics.js?v=20261111-1"></script>
+    <script type="module" src="../assets/js/festa60-shorts.js?v=20261113-1"></script>
     <script type="module" src="../assets/js/festa60-page-metrics.js?v=20261111-1"></script>
 
 

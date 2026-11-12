@@ -1,0 +1,61 @@
+.festa-pr-video .festa-short-feature {
+  display: grid;
+  grid-template-columns: minmax(240px, 340px) minmax(0, 1fr);
+  gap: clamp(24px, 4vw, 48px);
+  align-items: center;
+  margin-top: 28px;
+}
+.festa-pr-video video[data-short-player], .festa-shorts video[data-short-player] {
+  display: block; width: 100%; height: auto; aspect-ratio: 9 / 16; object-fit: contain;
+  border: 1px solid var(--line-strong, #40505c); border-radius: 12px; background: #070c14;
+}
+.festa-short-feature__copy { min-width: 0; }
+.festa-short-feature__copy h3 { margin: 0 0 12px; font-size: clamp(23px, 3vw, 34px); line-height: 1.6; }
+.festa-short-feature__copy > p { line-height: 1.85; }
+.festa-short-actions { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin-top: 16px; }
+.festa-short-actions a { text-underline-offset: 4px; }
+.festa-short-button {
+  display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 11px 16px;
+  border: 1px solid var(--line-strong, #40505c); border-radius: 8px; background: transparent;
+  color: inherit; font: inherit; font-weight: 700; line-height: 1.5; cursor: pointer;
+}
+.festa-short-button:hover { background: rgb(255 255 255 / 6%); }
+.festa-short-button[aria-pressed="true"] { background: var(--gold, #ffd21c); color: #101b27; border-color: var(--gold, #ffd21c); }
+.festa-short-button:disabled { opacity: .4; cursor: default; }
+.festa-short-button:focus-visible, .festa-short-card:focus-visible { outline: 3px solid var(--gold, #ffd21c); outline-offset: 4px; }
+.festa-short-button--primary { background: var(--gold, #ffd21c); color: #101b27; border-color: var(--gold, #ffd21c); }
+.festa-short-button[hidden] { display: none; }
+.festa-short-notice { margin: 12px 0 0; color: var(--muted, #b6c1ce); font-size: .875rem; line-height: 1.8; }
+.festa-short-full { margin-top: 30px; border-top: 1px solid var(--line-strong, #40505c); padding-top: 20px; }
+.festa-short-full summary { width: fit-content; cursor: pointer; font-weight: 700; color: var(--gold, #ffd21c); }
+.festa-short-full[open] summary { margin-bottom: 18px; }
+.festa-short-full video { aspect-ratio: 16 / 9; }
+.festa-shorts .wrap { max-width: 1180px; }
+.festa-shorts__tabs { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }
+.festa-shorts__layout { display: grid; grid-template-columns: minmax(280px, 390px) minmax(0, 1fr); gap: 36px; align-items: start; }
+.festa-shorts__player { position: sticky; top: 100px; min-width: 0; scroll-margin-top: 100px; }
+.festa-shorts__player video { max-height: 65vh; }
+.festa-shorts__player h2 { margin: 14px 0 8px; font-size: clamp(21px, 2.5vw, 28px); line-height: 1.6; }
+.festa-shorts__meta { margin: 12px 0 0; color: var(--gold, #ffd21c); font-size: .875rem; }
+.festa-shorts__navigation { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.festa-shorts__status { min-height: 2.8em; margin-top: 12px; font-size: .875rem; color: var(--muted, #b6c1ce); overflow-wrap: anywhere; }
+.festa-shorts__list { list-style: none; padding: 0; margin: 20px 0 0; }
+.festa-shorts__list > li { border-top: 1px solid var(--line-strong, #40505c); }
+.festa-short-card { display: flex; gap: 18px; padding: 18px 10px; text-decoration: none; color: inherit; border-radius: 8px; }
+.festa-short-card:hover { background: rgb(255 255 255 / 4%); }
+.festa-short-card[aria-current="true"] { background: rgb(255 210 28 / 9%); }
+.festa-short-card img { width: 72px; height: 128px; object-fit: cover; border-radius: 4px; flex: 0 0 auto; }
+.festa-short-card > span { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.festa-short-card__meta, .festa-short-card__era { font-size: .8rem; color: var(--muted, #b6c1ce); }
+.festa-short-card__title { font-size: 1rem; font-weight: 700; line-height: 1.65; }
+.festa-short-card__action { margin-top: auto; color: var(--gold, #ffd21c); font-weight: 700; font-size: .875rem; }
+.festa-shorts__full-link { margin-top: 28px; }
+@media (max-width: 760px) {
+  .festa-pr-video .festa-short-feature, .festa-shorts__layout { grid-template-columns: 1fr; }
+  .festa-pr-video video[data-short-player] { max-width: 340px; margin-inline: auto; }
+  .festa-short-feature__copy h3 { font-size: 24px; }
+  .festa-shorts__player { position: static; }
+  .festa-shorts__player video { max-width: 330px; max-height: 62vh; margin-inline: auto; }
+  .festa-shorts__layout { gap: 28px; }
+  .festa-short-card { gap: 14px; padding-inline: 4px; }
+}

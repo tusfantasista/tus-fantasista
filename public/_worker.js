@@ -4229,6 +4229,21 @@ async function onRequestPost8() {
 }
 __name(onRequestPost8, "onRequestPost");
 
+// Keep publication IDs finite, including the original full-length PR.
+// Display titles are resolved from the public shorts catalogue in the CRM.
+const VIDEO_METRICS_CATALOG = Object.freeze([
+  { video_id: "festa60-pr", short_id: null, kind: "full" },
+  ...Array.from({ length: 10 }, (_, index) => {
+    const key = `pr${String(index + 1).padStart(2, "0")}`;
+    return { video_id: `festa60-short-${key}`, short_id: key.toUpperCase(), kind: "pr" };
+  }),
+  ...Array.from({ length: 14 }, (_, index) => {
+    const key = `h${String(index + 1).padStart(2, "0")}`;
+    return { video_id: `festa60-short-${key}`, short_id: key.toUpperCase(), kind: "history" };
+  }),
+]);
+const VIDEO_METRICS_IDS = new Set(VIDEO_METRICS_CATALOG.map((entry) => entry.video_id));
+
 async function onRequestVideoEvents({ request, env }) {
   if (request.method !== "POST") return methodNotAllowed();
   const origin = request.headers.get("origin");
@@ -4269,7 +4284,7 @@ async function onRequestVideoEvents({ request, env }) {
   } catch {
     return badRequest("Invalid video event.");
   }
-  if (event?.video_id !== "festa60-pr"
+  if (!VIDEO_METRICS_IDS.has(event?.video_id)
     || typeof event.playback_id !== "string"
     || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(event.playback_id || "")
     || !["start", "complete"].includes(event.event)) {
@@ -4282,25 +4297,105 @@ async function onRequestVideoEvents({ request, env }) {
        VALUES (?, ?, ?, CASE WHEN ? = 'complete' THEN ? ELSE NULL END)
        ON CONFLICT (video_id, playback_id) DO UPDATE SET
          completed_at = COALESCE(video_playbacks.completed_at, excluded.completed_at)`
-    ).bind(event.video_id, event.playback_id, now, event.event, now).run();
+    ).bind(event.video_id, event.playback_id.toLowerCase(), now, event.event, now).run();
     return new Response(null, { status: 204, headers: { "cache-control": "no-store" } });
   } catch (error) {
     return serverError(error);
   }
 }
 
+function emptyVideoCounts() {
+  return { starts: 0, completions: 0, first_started_at: null, last_started_at: null, last_completed_at: null };
+}
+function videoCompletionRate(counts) {
+  return counts.starts > 0 ? counts.completions / counts.starts : null;
+}
+function addVideoCounts(total, counts) {
+  total.starts += counts.starts;
+  total.completions += counts.completions;
+  if (counts.first_started_at && (!total.first_started_at || counts.first_started_at < total.first_started_at)) {
+    total.first_started_at = counts.first_started_at;
+  }
+  if (counts.last_started_at && (!total.last_started_at || counts.last_started_at > total.last_started_at)) {
+    total.last_started_at = counts.last_started_at;
+  }
+  if (counts.last_completed_at && (!total.last_completed_at || counts.last_completed_at > total.last_completed_at)) {
+    total.last_completed_at = counts.last_completed_at;
+  }
+}
+async function readVideoStats(db, days, now = new Date()) {
+  const dayMs = 86400000;
+  const jstOffset = 9 * 3600000;
+  const today = new Date(now.getTime() + jstOffset).toISOString().slice(0, 10);
+  const todayLabel = Date.parse(`${today}T00:00:00.000Z`);
+  const firstLabel = todayLabel - (days - 1) * dayMs;
+  const from = new Date(firstLabel).toISOString().slice(0, 10);
+  const lowerBound = new Date(firstLabel - jstOffset).toISOString();
+  const upperBound = new Date(todayLabel + dayMs - jstOffset).toISOString();
+  const [aggregate, daily] = await Promise.all([
+    db.prepare(
+      `SELECT video_id, COUNT(*) AS starts, COUNT(completed_at) AS completions,
+              MIN(started_at) AS first_started_at, MAX(started_at) AS last_started_at,
+              MAX(completed_at) AS last_completed_at
+       FROM video_playbacks GROUP BY video_id`
+    ).all(),
+    db.prepare(
+      `SELECT date(started_at, '+9 hours') AS event_date, video_id, COUNT(*) AS starts, 0 AS completions
+       FROM video_playbacks WHERE started_at >= ? AND started_at < ?
+       GROUP BY event_date, video_id
+       UNION ALL
+       SELECT date(completed_at, '+9 hours') AS event_date, video_id, 0 AS starts, COUNT(*) AS completions
+       FROM video_playbacks WHERE completed_at >= ? AND completed_at < ?
+       GROUP BY event_date, video_id
+       ORDER BY event_date, video_id`
+    ).bind(lowerBound, upperBound, lowerBound, upperBound).all(),
+  ]);
+  const counts = new Map(VIDEO_METRICS_CATALOG.map(({ video_id }) => [video_id, emptyVideoCounts()]));
+  for (const row of aggregate.results || []) {
+    if (!counts.has(row.video_id)) continue;
+    counts.set(row.video_id, {
+      starts: Number(row.starts), completions: Number(row.completions),
+      first_started_at: row.first_started_at, last_started_at: row.last_started_at,
+      last_completed_at: row.last_completed_at,
+    });
+  }
+  const total = emptyVideoCounts();
+  const videos = VIDEO_METRICS_CATALOG.map((entry) => {
+    const entryCounts = counts.get(entry.video_id);
+    addVideoCounts(total, entryCounts);
+    return { ...entry, ...entryCounts, completion_rate: videoCompletionRate(entryCounts) };
+  });
+  const timelineRows = Array.from({ length: days }, (_, index) => ({
+    date: new Date(firstLabel + index * dayMs).toISOString().slice(0, 10),
+    starts: 0, completions: 0,
+    videos: VIDEO_METRICS_CATALOG.map(({ video_id }) => ({ video_id, starts: 0, completions: 0 })),
+  }));
+  const byDate = new Map(timelineRows.map((row) => [row.date, row]));
+  for (const row of daily.results || []) {
+    const day = byDate.get(row.event_date);
+    if (!day || !VIDEO_METRICS_IDS.has(row.video_id)) continue;
+    const video = day.videos.find((entry) => entry.video_id === row.video_id);
+    const starts = Number(row.starts);
+    const completions = Number(row.completions);
+    day.starts += starts; day.completions += completions;
+    video.starts += starts; video.completions += completions;
+  }
+  return {
+    // Preserve the original response shape and historical full-length counts.
+    stats: counts.get("festa60-pr"),
+    summary: { ...total, completion_rate: videoCompletionRate(total) },
+    videos,
+    timeline: { timezone: "Asia/Tokyo", days, from, to: today, rows: timelineRows },
+  };
+}
 async function onRequestVideoStats({ request, env }) {
   if (request.method !== "GET") return methodNotAllowed();
   const admin = assertAdmin(request, env);
   if (!admin.ok) return admin.response;
+  const rawDays = new URL(request.url).searchParams.get("days") ?? "30";
+  if (!["7", "30", "90"].includes(rawDays)) return badRequest("表示期間を確認してください。");
   try {
-    const stats = await requireDb(env).prepare(
-      `SELECT COUNT(*) AS starts, COUNT(completed_at) AS completions,
-              MIN(started_at) AS first_started_at, MAX(started_at) AS last_started_at,
-              MAX(completed_at) AS last_completed_at
-       FROM video_playbacks WHERE video_id = ?`
-    ).bind("festa60-pr").first();
-    return json({ ok: true, stats });
+    return json({ ok: true, ...await readVideoStats(requireDb(env), Number(rawDays)) });
   } catch (error) {
     return serverError(error);
   }

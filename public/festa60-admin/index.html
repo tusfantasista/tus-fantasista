@@ -8,9 +8,10 @@
     <title>FESTA 60 申込管理</title>
     <link rel="stylesheet" href="../assets/css/festa60-admin.css?v=20260830-1" />
     <link rel="stylesheet" href="../assets/css/festa60-page-stats.css?v=20261111-2" />
+    <link rel="stylesheet" href="../assets/css/festa60-video-stats.css?v=20261113-1" />
     <link rel="stylesheet" href="../assets/css/festa60-coupon-admin.css?v=20261112-2" />
     <script src="../assets/js/festa60-admin.js?v=20261103-1" defer></script>
-    <script type="module" src="../assets/js/festa60-video-stats.js?v=20261111-1"></script>
+    <script type="module" src="../assets/js/festa60-video-stats.js?v=20261113-1"></script>
     <script type="module" src="../assets/js/festa60-page-stats.js?v=20261111-2"></script>
     <script type="module" src="../assets/js/festa60-coupon-admin.js?v=20261112-5"></script>
   </head>
@@ -176,23 +177,59 @@
       <section class="admin-list-section" aria-labelledby="video-stats-title" data-video-stats>
         <div class="admin-section-heading admin-section-heading--actions">
           <div>
-            <p class="admin-section-label">PR Video</p>
-            <h2 id="video-stats-title">PR動画の再生状況</h2>
+            <p class="admin-section-label">Videos</p>
+            <h2 id="video-stats-title">動画別の再生状況</h2>
           </div>
           <button class="admin-button" type="button" data-video-stats-refresh>動画の集計を更新</button>
         </div>
-        <p class="admin-definition">集計開始以降の回数です。同じページを開いている間は、再生開始・完了をそれぞれ1回数えます。完了は動画の9割以上を再生して最後に到達した場合です。再読み込みや別タブでの再生は別に数えます。</p>
+        <p class="admin-definition">全体版と短編24本の集計です。選択した動画を再生すると開始を1回数え、実際に9割以上を再生して最後まで到達すると完了を1回数えます。一時停止からの再開や集計の再送では重複しません。末尾だけへ移動した再生は完了に含めません。再読み込み・別タブ・動画の選び直しは別の再生です。</p>
         <p class="admin-message" role="status" aria-live="polite" data-video-stats-message>動画の再生状況を取得しています。</p>
-        <div class="admin-summary-grid" aria-live="polite" data-video-stats-values hidden>
+        <div class="admin-summary-grid admin-summary-grid--three" aria-live="polite" data-video-stats-values hidden>
           <article class="admin-metric admin-metric--accent">
-            <span>再生開始</span><strong data-video-starts>-</strong>
+            <span>再生開始（全期間）</span><strong data-video-starts>-</strong>
             <small data-video-first-start>初回 記録なし</small><small data-video-last-start>最新 記録なし</small>
           </article>
           <article class="admin-metric admin-metric--success">
-            <span>再生完了</span><strong data-video-completions>-</strong>
+            <span>再生完了（全期間）</span><strong data-video-completions>-</strong>
             <small data-video-last-complete>最新 記録なし</small>
           </article>
+          <article class="admin-metric">
+            <span>完了率（全期間）</span><strong data-video-completion-rate>-</strong>
+            <small>再生完了 ÷ 再生開始</small><small>開始の記録がない場合は —</small>
+          </article>
         </div>
+        <div data-video-stats-breakdown hidden>
+          <div class="page-stats-table-scroll video-stats-table-scroll">
+            <table class="page-stats-table video-stats-table">
+              <caption>動画別の累計（全期間・再生開始が多い順）。動画名から視聴ページを開けます。日時は日本時間です。</caption>
+              <thead><tr><th scope="col">動画</th><th scope="col">種類</th><th scope="col">再生開始</th><th scope="col">再生完了</th><th scope="col">完了率</th><th scope="col">最新の記録</th></tr></thead>
+              <tbody data-video-stats-videos></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="page-stats-toolbar video-stats-toolbar">
+          <label for="video-stats-period">日別の表示期間
+            <select id="video-stats-period" data-video-stats-period><option value="7">直近7日間</option><option value="30" selected>直近30日間</option><option value="90">直近90日間</option></select>
+          </label>
+          <label for="video-stats-target">日別の対象動画
+            <select id="video-stats-target" data-video-stats-target><option value="all">全動画</option></select>
+          </label>
+          <p>上の累計は表示期間・対象動画にかかわらず全期間・全動画です。日別は開始日と完了日をそれぞれ日本時間で集計し、記録のない日は0と表示します。</p>
+        </div>
+        <div data-video-stats-timeline hidden>
+          <p class="page-stats-range" data-video-stats-range></p>
+          <details class="page-stats-table-details">
+            <summary>日別の再生回数を見る</summary>
+            <div class="page-stats-table-scroll">
+              <table class="page-stats-table">
+                <caption>選択した動画の日別回数（日本時間・新しい日付から表示）</caption>
+                <thead><tr><th scope="col">日付</th><th scope="col">再生開始</th><th scope="col">再生完了</th></tr></thead>
+                <tbody data-video-stats-daily></tbody>
+              </table>
+            </div>
+          </details>
+        </div>
+        <p class="admin-message" data-video-stats-daily-note hidden></p>
         <p class="admin-updated" data-video-stats-updated>取得中</p>
       </section>
 
