@@ -352,6 +352,18 @@ img { max-width: 100%; }
 .festa-news-entry p { max-width: 860px; color: var(--f60-muted); }
 .festa-news-entry ul { max-width: 860px; padding-left: 1.4em; color: var(--f60-muted); }
 .festa-news-entry a:not(.btn) { color: var(--f60-gold); font-weight: 700; text-underline-offset: 4px; }
+.festa-news-entry .ticket-policy-comparison { width: 100%; max-width: 860px; table-layout: fixed; border-collapse: collapse; margin: 24px 0; font-size: .9375rem; line-height: 1.8; }
+.festa-news-entry .ticket-policy-comparison th,
+.festa-news-entry .ticket-policy-comparison td { width: 50%; border: 1px solid var(--f60-line); padding: 14px 16px; text-align: left; vertical-align: top; }
+.festa-news-entry .ticket-policy-comparison th { color: var(--f60-cream); background: var(--f60-panel); }
+.festa-news-entry .ticket-policy-comparison th:last-child { color: var(--f60-gold); }
+.festa-news-entry .ticket-policy-comparison td { color: var(--f60-muted); }
+.festa-news-entry .ticket-policy-comparison td:last-child { color: var(--f60-cream); background: rgba(255, 210, 28, .04); }
+.festa-news-entry .ticket-policy-notes li + li { margin-top: 14px; }
+@media (max-width: 600px) {
+  .festa-news-entry .ticket-policy-comparison th,
+  .festa-news-entry .ticket-policy-comparison td { padding: 12px; }
+}
 .top-button { position: fixed; right: 18px; bottom: 18px; z-index: 40; width: 46px; height: 46px; border: 1px solid var(--f60-line); border-radius: 50%; background: var(--f60-panel); color: var(--f60-gold); opacity: 0; pointer-events: none; }
 .top-button.is-visible { opacity: 1; pointer-events: auto; }
 .photo-library-status { color: var(--f60-muted); }
