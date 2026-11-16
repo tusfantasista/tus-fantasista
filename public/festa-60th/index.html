@@ -2237,8 +2237,8 @@
     <link rel="stylesheet" href="../assets/css/photo-library.css">
     <link rel="stylesheet" href="../assets/css/festa60-film-hero.css?v=20260830-11">
     <link rel="stylesheet" href="../assets/css/festa60-keyvisual.css?v=20261012-4">
-    <link rel="stylesheet" href="../assets/css/festa60-home-compact.css?v=20261111-2">
-    <link rel="stylesheet" href="../assets/css/festa60-shorts.css?v=20261113-1">
+    <link rel="stylesheet" href="../assets/css/festa60-home-compact.css?v=20261116-1">
+    <link rel="stylesheet" href="../assets/css/festa60-shorts.css?v=20261116-1">
   </head>
   <body><div class="page">
       <header class="header">
@@ -2339,8 +2339,24 @@
           <div class="wrap">
             <div class="section-head">
               <h2 id="pr-video-title">60周年記念FESTA <span>PR動画</span></h2>
-              <p>再会、デモンストレーション、ダンスタイム。<time datetime="2027-02-11">2月11日</time>が楽しみになる一篇を。</p>
+              <p>再会、デモンストレーション、ダンスタイム。全体版でFESTAの一日をご紹介します。</p>
             </div>
+            <div class="festa-video-overview">
+            <div id="pr-video-full" class="festa-pr-video__full">
+              <video controls playsinline preload="none" width="1920" height="1080" data-video-id="festa60-pr"
+                     poster="./media/festa60-pr-v21-poster.webp" aria-label="60周年記念FESTA PR動画 全体版（1分55秒）">
+                <source src="./media/festa60-pr-v22-synced-stream/index.m3u8" type="application/vnd.apple.mpegurl">
+                <source src="./media/festa60-pr-v21.mp4?v=22" type="video/mp4">
+              </video>
+              <p class="festa-pr-video__info">全体版・1分55秒・音声あり <a href="./media/festa60-pr-v21.mp4?v=22" download="FESTA60-PR.mp4">全体版MP4を保存</a></p>
+            </div>
+            <nav class="festa-video-categories" aria-label="動画一覧">
+              <a href="./shorts/?kind=pr"><strong>PRショート動画</strong><span>10本を見る <span aria-hidden="true">→</span></span></a>
+              <a href="./shorts/?kind=history"><strong>60年の物語</strong><span>14本を見る <span aria-hidden="true">→</span></span></a>
+            </nav>
+            </div>
+            <details class="festa-short-preview">
+              <summary>PRショート動画を1本見る</summary>
             <div class="festa-short-feature">
               <video data-short-player controls playsinline preload="none" width="1080" height="1920"
                      poster="./media/shorts/pr01.webp" aria-labelledby="pr-video-title pr-short-title" aria-describedby="pr-video-info">
@@ -2353,9 +2369,7 @@
                 <p class="festa-pr-video__info" id="pr-video-info" data-short-info>30秒・音声あり</p>
                 <p class="festa-short-notice">再生ボタンを押すと音が出ます。</p>
                 <div class="cta-row">
-                  <a class="btn btn--primary" href="../festa60-register/">2月11日の参加申込へ</a>
-                  <a class="btn btn--ghost" href="./shorts/?kind=pr">ほかのPR動画を見る（10本）</a>
-                  <a class="btn btn--ghost" href="./shorts/?kind=history">60年の物語を見る（14本）</a>
+                  <a class="btn btn--primary" href="../festa60-register/">参加申込へ</a>
                 </div>
                 <div class="festa-short-actions">
                   <button class="festa-short-button" type="button" data-short-random hidden>別のPRを見る</button>
@@ -2364,14 +2378,6 @@
                 </div>
               </div>
             </div>
-            <details id="pr-video-full" class="festa-short-full">
-              <summary>全体版を見る（1分55秒・音声あり）</summary>
-              <video controls playsinline preload="none" width="1920" height="1080" data-video-id="festa60-pr"
-                     poster="./media/festa60-pr-v21-poster.webp" aria-label="60周年記念FESTA PR動画 全体版（1分55秒）">
-                <source src="./media/festa60-pr-v22-synced-stream/index.m3u8" type="application/vnd.apple.mpegurl">
-                <source src="./media/festa60-pr-v21.mp4?v=22" type="video/mp4">
-              </video>
-              <p class="festa-pr-video__info">1分55秒・音声あり <a href="./media/festa60-pr-v21.mp4?v=22" download="FESTA60-PR.mp4">全体版MP4を保存</a></p>
             </details>
             <p class="festa-pr-video__notice">動画内に掲載を希望されない写真がありましたら、<a href="https://tus-fantasista.pages.dev/contact/">お問い合わせフォーム</a>からご連絡ください。該当の写真を確認のうえ、動画から削除いたします。</p>
           </div>
@@ -2422,7 +2428,7 @@
             <div class="latest-news__list" data-nosnippet>
               <article class="latest-news__item">
                 <time datetime="2026-11-16">2026年11月16日</time>
-                <h3><a href="./news/#dance-ticket-policy">ダンスタイムチケットを、舞踏研究部への支援に</a></h3>
+                <h3><a href="./news/#dance-ticket-policy">ダンスタイムチケットの取扱いについて</a></h3>
               </article>
               <article class="latest-news__item">
                 <time datetime="2026-11-13">2026年11月13日</time>
@@ -2463,11 +2469,10 @@
             </div>
             <p class="home-support-direct">寄付はFMドレス更新を最優先に、現役の活動と60周年記念事業に活用します。</p>
             <section id="dance-tickets" class="home-support-message" aria-labelledby="dance-tickets-title">
-              <h3 id="dance-tickets-title">ダンスタイムチケット<br>踊る交流を、舞踏研究部の応援に。</h3>
-              <p>通常参加を含むすべての参加プランにチケットが付きます。現役と1曲踊るごとに1枚を渡し、使用した券の額面全額を、FMドレスなど部の活動のために寄付します。現役個人への現金還元は行いません。</p>
-              <p>当日は現役が曲ごとに担当する卓を交代し、各卓を回って交流します。チケットがない方・使い切った方も踊れます。その分は寄付額に加算しません。踊るために使わず、希望する券を寄付箱へ入れて応援することもできます。</p>
-              <p><strong>既にお申し込みの方も、チケットの額面・枚数はそのままです。</strong></p>
-              <a class="btn btn--ghost" href="./support/#dance-tickets">プラン別の額面・枚数と使い方を見る</a>
+              <h3 id="dance-tickets-title">ダンスタイムチケットのご案内</h3>
+              <p>OBOGと現役部員が一緒に踊るきっかけをつくり、舞踏研究部の活動を支援するためのチケットです。通常参加を含むすべての参加プランに付いています。</p>
+              <p>チケットによる支援は部全体へ届け、FMドレスなどの活動費に充てます。既にお申し込みの方も、額面・枚数に変更はありません。</p>
+              <a class="btn btn--ghost" href="./dance-tickets/">詳しいご案内・当日の流れ</a>
             </section>
             <div class="fee-guide-actions">
               <a class="btn btn--ghost" href="./support/">料金・割引・返礼の詳細</a>
@@ -2485,7 +2490,7 @@
             <div class="event-focus__program">
               <article class="event-focus__item"><h3>プロデモ</h3><p>若代愼・辰巳友莉亜組、寺門駿・寺門彩香組が出演します。</p><a href="./program/#demonstrators">出演者の写真・紹介</a></article>
               <article class="event-focus__item"><h3>四年生デモ</h3><p>飯塚隆嗣・有村玲音組、矢嶋太門・下垣内咲帆組、伊藤裕貴・柳下真嬉組が出演します。</p></article>
-              <article class="event-focus__item"><h3>ダンスタイム</h3><p>現役生が曲ごとに各卓を回り、世代を超えて一緒に踊る時間です。チケットの額面全額が舞踏研究部への支援につながります。券がなくても踊れます。</p></article>
+              <article class="event-focus__item"><h3>ダンスタイム</h3><p>OBOGと現役部員が一緒に踊り、交流する時間です。幅広い世代に交流の機会を届けるため、現役部員が各卓を回ります。</p></article>
               <article class="event-focus__item"><h3>トライアル</h3><p>参加者がフロアで踊る企画です。参加方法は、決まり次第お知らせします。</p></article>
               <article class="event-focus__item"><h3>60周年記念展示</h3><p>舞踏研究部の60年を写真や資料で振り返ります。</p></article>
               <article class="event-focus__item"><h3>懇親会</h3><p>第二部は同じ建物の9階へ。同期・先輩・後輩との交流をお楽しみください。</p></article>

@@ -1,0 +1,294 @@
+.tickets-content {
+  max-width: 980px;
+  padding-bottom: 32px;
+}
+
+.tickets-hero {
+  padding: clamp(38px, 6vw, 72px) 0 32px;
+}
+
+.tickets-hero h1 {
+  margin: 0;
+  color: var(--f60-cream);
+  font-size: clamp(1.9rem, 4.6vw, 3rem);
+  line-height: 1.5;
+}
+
+.tickets-lead {
+  max-width: 820px;
+  margin: 18px 0 0;
+  color: var(--f60-muted);
+  font-size: 1.06rem;
+  line-height: 1.9;
+}
+
+.tickets-jump {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 22px;
+  margin-top: 22px;
+}
+
+.tickets-jump a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: .875rem;
+}
+
+.tickets-section {
+  border-top: 1px solid var(--f60-line);
+  padding: 32px 0;
+  scroll-margin-top: 96px;
+}
+
+.tickets-section h2 {
+  margin: 0 0 16px;
+  color: var(--f60-cream);
+  font-size: clamp(1.3rem, 2.8vw, 1.6rem);
+  line-height: 1.6;
+}
+
+.tickets-section p {
+  margin: 0;
+  color: var(--f60-muted);
+  line-height: 1.9;
+}
+
+.tickets-section p + p {
+  margin-top: 12px;
+}
+
+.tickets-section strong {
+  color: var(--f60-cream);
+}
+
+.tickets-content a:not(.btn) {
+  color: var(--f60-gold);
+  text-underline-offset: 4px;
+}
+
+.tickets-content a:not(.btn):focus-visible,
+.tickets-details > summary:focus-visible {
+  outline: 2px solid var(--f60-gold);
+  outline-offset: 4px;
+}
+
+.tickets-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tickets-steps li {
+  min-width: 0;
+  border: 1px solid var(--f60-line);
+  border-radius: 6px;
+  padding: 20px;
+  background: rgba(255, 210, 28, .025);
+}
+
+.tickets-step-number {
+  color: var(--f60-gold);
+  font-family: "Oswald", sans-serif;
+  font-size: 1.35rem;
+  font-weight: 600;
+}
+
+.tickets-steps h3 {
+  margin: 8px 0 10px;
+  color: var(--f60-cream);
+  font-size: 1.08rem;
+  line-height: 1.6;
+}
+
+.tickets-steps p {
+  font-size: .9375rem;
+}
+
+.tickets-donation {
+  border-left: 4px solid var(--f60-gold);
+  padding: 22px 24px;
+  background: rgba(255, 210, 28, .05);
+}
+
+.tickets-donation .tickets-donation-total {
+  color: var(--f60-cream);
+}
+
+.tickets-donation-total strong {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 8px;
+  margin-inline: 4px;
+}
+
+.tickets-donation-total span {
+  color: var(--f60-gold);
+  font-size: 1.4rem;
+}
+
+.tickets-donation-targets {
+  display: grid;
+  gap: 14px;
+  margin: 20px 0;
+  padding-left: 1.25em;
+}
+
+.tickets-donation-targets li::marker {
+  color: var(--f60-gold);
+}
+
+.tickets-donation-targets strong,
+.tickets-donation-targets span {
+  display: block;
+}
+
+.tickets-donation-targets span {
+  margin-top: 3px;
+  color: var(--f60-muted);
+  font-size: .9375rem;
+}
+
+.tickets-section .tickets-note {
+  margin-top: 16px;
+  font-size: .9375rem;
+}
+
+.tickets-table-wrap {
+  margin-top: 20px;
+}
+
+.tickets-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--f60-panel);
+  font-size: .9375rem;
+}
+
+.tickets-table caption {
+  margin-bottom: 10px;
+  color: var(--f60-cream);
+  font-weight: 700;
+  text-align: left;
+}
+
+.tickets-table th,
+.tickets-table td {
+  border-bottom: 1px solid var(--f60-line);
+  padding: 13px 16px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.tickets-table thead th {
+  background: rgba(255, 210, 28, .07);
+  color: var(--f60-cream);
+  font-size: .875rem;
+}
+
+.tickets-table tbody th {
+  color: var(--f60-cream);
+}
+
+.tickets-table td {
+  color: var(--f60-muted);
+  white-space: nowrap;
+}
+
+.tickets-table th small {
+  display: block;
+  margin-top: 2px;
+  color: var(--f60-muted);
+  font-size: .8rem;
+  font-weight: 500;
+}
+
+.tickets-ticket-notes {
+  display: grid;
+  gap: 8px;
+  margin: 20px 0 0;
+  padding-left: 1.25em;
+  color: var(--f60-muted);
+  font-size: .9375rem;
+  line-height: 1.9;
+}
+
+.tickets-details {
+  margin-top: 24px;
+  border: 1px solid var(--f60-line);
+  border-radius: 6px;
+  padding: 0 18px;
+}
+
+.tickets-details > summary {
+  padding: 16px 0;
+  color: var(--f60-cream);
+  font-weight: 700;
+  line-height: 1.7;
+  cursor: pointer;
+}
+
+.tickets-details > div {
+  padding: 0 0 18px;
+  font-size: .9375rem;
+}
+
+.tickets-next .cta-row {
+  margin-top: 20px;
+}
+
+@media (max-width: 700px) {
+  .tickets-steps {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .tickets-steps li {
+    padding: 16px 18px;
+  }
+
+  .tickets-steps h3 {
+    display: inline;
+    margin-left: 10px;
+  }
+
+  .tickets-steps p {
+    margin-top: 8px;
+  }
+}
+
+@media (max-width: 560px) {
+  .tickets-hero {
+    padding-top: 32px;
+  }
+
+  .tickets-section {
+    padding-block: 26px;
+  }
+
+  .tickets-jump {
+    gap: 2px 18px;
+  }
+
+  .tickets-donation {
+    padding: 18px 16px;
+  }
+
+  .tickets-table th,
+  .tickets-table td {
+    padding: 12px 9px;
+  }
+
+  .tickets-table th small {
+    font-size: .75rem;
+  }
+
+  .tickets-details {
+    padding-inline: 14px;
+  }
+}
