@@ -79,6 +79,34 @@
   background: var(--ridaisai-table-stripe);
 }
 
+.announcement-article .ridaisai-demo-timetable tr > :is(:first-child, :nth-child(2)) {
+  width: 5.6rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.announcement-article .ridaisai-demo-timetable th:nth-child(3) {
+  width: 29%;
+}
+
+.announcement-article .ridaisai-routine {
+  margin: 12px 0;
+  border: 1px solid rgba(32, 33, 36, .14);
+  border-radius: 8px;
+}
+
+.announcement-article .ridaisai-routine summary {
+  padding: 12px 14px;
+  color: var(--ink, #202124);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.announcement-article .ridaisai-routine ol {
+  margin: 0;
+  padding: 0 14px 14px 2.2rem;
+}
+
 @media (max-width: 560px) {
   .announcement-article .ridaisai-timetable,
   .festa-news-entry .ridaisai-timetable {
@@ -96,6 +124,16 @@
   .announcement-article .ridaisai-timetable tr > :first-child,
   .festa-news-entry .ridaisai-timetable tr > :first-child {
     width: 6.8rem;
+    font-size: .8125rem;
+  }
+
+  .announcement-article .ridaisai-demo-timetable th,
+  .announcement-article .ridaisai-demo-timetable td {
+    padding: 8px 6px;
+  }
+
+  .announcement-article .ridaisai-demo-timetable tr > :is(:first-child, :nth-child(2)) {
+    width: 3.7rem;
     font-size: .8125rem;
   }
 }
