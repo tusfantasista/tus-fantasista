@@ -2240,7 +2240,8 @@
     <link rel="stylesheet" href="../assets/css/enhancements.css?v=20260718-2">
     <link rel="stylesheet" href="../assets/css/photo-library.css">
     <link rel="stylesheet" href="../assets/css/festa60-film-hero.css?v=20260830-11">
-    <link rel="stylesheet" href="../assets/css/festa60-keyvisual.css?v=20261126-1">
+    <link rel="stylesheet" href="../assets/css/festa60-keyvisual.css?v=20261126-2">
+    <noscript><style>.keyvisual-opening-video { display: none !important; }</style></noscript>
     <link rel="stylesheet" href="../assets/css/festa60-home-compact.css?v=20261116-1">
     <link rel="stylesheet" href="../assets/css/festa60-shorts.css?v=20261116-1">
   </head>
@@ -2277,21 +2278,21 @@
         <section class="hero hero--keyvisual" aria-labelledby="festa-keyvisual-title">
           <div class="wrap keyvisual-layout">
             <h1 id="festa-keyvisual-title" class="keyvisual-sr-only">東京理科大学舞踏研究部 60周年記念FESTA</h1>
-            <figure class="keyvisual-figure" data-keyvisual-light aria-describedby="keyvisual-motion-description">
+            <figure class="keyvisual-figure" data-keyvisual-opening data-opening-view="intro" aria-describedby="keyvisual-motion-description">
               <a class="keyvisual-artwork" href="../festa60-register/" aria-label="60周年記念FESTAの参加申込ページを開く">
                 <picture class="keyvisual-fallback">
                   <source type="image/webp" srcset="../assets/img/festa60/keyvisual-20261002-noqr-800.webp 800w, ../assets/img/festa60/keyvisual-20261002-noqr-1600.webp 1600w" sizes="(min-width: 901px) 520px, (min-width: 600px) 560px, 100vw">
                   <img src="../assets/img/festa60/keyvisual-20261002-noqr-1600.webp" width="1600" height="2263" alt="東京理科大学舞踏研究部 60周年記念FESTA。2027年2月11日（木・祝）、東京都立産業貿易センター 台東館。" fetchpriority="high" decoding="async">
                 </picture>
-                <span id="keyvisual-film-light" class="keyvisual-film-light" aria-hidden="true" hidden>
-                  <span class="keyvisual-film-light__strip keyvisual-film-light__strip--lower"></span>
-                  <span class="keyvisual-film-light__strip keyvisual-film-light__strip--upper"></span>
-                </span>
+                <video id="keyvisual-opening-video" class="keyvisual-opening-video"
+                  width="640" height="906" muted playsinline preload="none" aria-hidden="true"
+                  poster="./media/keyvisual-opening-20261126-start.webp"
+                  data-src="./media/keyvisual-opening-20261126.mp4"></video>
               </a>
               <div class="keyvisual-motion-controls">
-                <button class="keyvisual-motion-toggle" type="button" data-keyvisual-toggle aria-controls="keyvisual-film-light" hidden>フィルムの光を一時停止</button>
+                <button class="keyvisual-motion-toggle" type="button" data-keyvisual-toggle aria-controls="keyvisual-opening-video" hidden>映像を一時停止</button>
               </div>
-              <figcaption id="keyvisual-motion-description" class="keyvisual-sr-only">公式キービジュアルのフィルムを光がたどります。動きは一時停止できます。</figcaption>
+              <figcaption id="keyvisual-motion-description" class="keyvisual-sr-only">無音の開幕映像が終わると、公式キービジュアルが表示されます。</figcaption>
             </figure>
             <div class="keyvisual-summary">
               <p class="eyebrow"><span class="label-ja">参加申込受付中</span><span class="label-en">Save the Date</span></p>
@@ -2965,7 +2966,7 @@
     <script src="../assets/js/site.js?v=20261002-1" defer=""></script>
     <script src="../assets/js/photo-library.js?v=20260809-3" defer=""></script>
     <script src="../assets/js/festa60-film-hero.js?v=20260830-5" defer=""></script>
-    <script src="../assets/js/festa60-keyvisual-light.js?v=20261126-1" defer=""></script>
+    <script src="../assets/js/festa60-keyvisual-opening.js?v=20261126-2" defer=""></script>
     <script type="module" src="../assets/js/festa60-public-summary.js?v=20261108-1"></script>
     <script type="module" src="../assets/js/festa60-event-schema.js?v=20261013-1"></script>
     <script type="module" src="../assets/js/festa60-shorts.js?v=20261113-1"></script>
