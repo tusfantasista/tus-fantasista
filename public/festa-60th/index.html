@@ -2240,7 +2240,7 @@
     <link rel="stylesheet" href="../assets/css/enhancements.css?v=20260718-2">
     <link rel="stylesheet" href="../assets/css/photo-library.css">
     <link rel="stylesheet" href="../assets/css/festa60-film-hero.css?v=20260830-11">
-    <link rel="stylesheet" href="../assets/css/festa60-keyvisual.css?v=20261012-4">
+    <link rel="stylesheet" href="../assets/css/festa60-keyvisual.css?v=20261126-1">
     <link rel="stylesheet" href="../assets/css/festa60-home-compact.css?v=20261116-1">
     <link rel="stylesheet" href="../assets/css/festa60-shorts.css?v=20261116-1">
   </head>
@@ -2277,30 +2277,21 @@
         <section class="hero hero--keyvisual" aria-labelledby="festa-keyvisual-title">
           <div class="wrap keyvisual-layout">
             <h1 id="festa-keyvisual-title" class="keyvisual-sr-only">東京理科大学舞踏研究部 60周年記念FESTA</h1>
-            <figure class="keyvisual-figure" data-keyvisual-motion data-photo-source="../assets/data/public-photo-library.json?v=20260809-2" aria-describedby="keyvisual-motion-description">
+            <figure class="keyvisual-figure" data-keyvisual-light aria-describedby="keyvisual-motion-description">
               <a class="keyvisual-artwork" href="../festa60-register/" aria-label="60周年記念FESTAの参加申込ページを開く">
                 <picture class="keyvisual-fallback">
                   <source type="image/webp" srcset="../assets/img/festa60/keyvisual-20261002-noqr-800.webp 800w, ../assets/img/festa60/keyvisual-20261002-noqr-1600.webp 1600w" sizes="(min-width: 901px) 520px, (min-width: 600px) 560px, 100vw">
                   <img src="../assets/img/festa60/keyvisual-20261002-noqr-1600.webp" width="1600" height="2263" alt="東京理科大学舞踏研究部 60周年記念FESTA。2027年2月11日（木・祝）、東京都立産業貿易センター 台東館。" fetchpriority="high" decoding="async">
                 </picture>
-                <span id="keyvisual-motion-layers" class="keyvisual-motion-layers" aria-hidden="true" hidden>
-                  <img class="keyvisual-motion-background" data-keyvisual-layer data-src="../assets/img/festa60/keyvisual-motion-20261002-background.webp" width="1600" height="2263" alt="" decoding="async">
-                  <span class="keyvisual-motion-film keyvisual-motion-film--upper">
-                    <img data-keyvisual-layer data-src="../assets/img/festa60/keyvisual-motion-20261002-upper-film.webp" width="1600" height="2263" alt="" decoding="async">
-                    <canvas data-keyvisual-canvas="upper"></canvas>
-                  </span>
-                  <span class="keyvisual-motion-film keyvisual-motion-film--lower">
-                    <img data-keyvisual-layer data-src="../assets/img/festa60/keyvisual-motion-20261002-lower-film.webp" width="1600" height="2263" alt="" decoding="async">
-                    <canvas data-keyvisual-canvas="lower"></canvas>
-                  </span>
-                  <img class="keyvisual-motion-foreground" data-keyvisual-layer data-src="../assets/img/festa60/keyvisual-motion-20261002-foreground.webp" width="1600" height="2263" alt="" decoding="async">
+                <span id="keyvisual-film-light" class="keyvisual-film-light" aria-hidden="true" hidden>
+                  <span class="keyvisual-film-light__strip keyvisual-film-light__strip--lower"></span>
+                  <span class="keyvisual-film-light__strip keyvisual-film-light__strip--upper"></span>
                 </span>
               </a>
               <div class="keyvisual-motion-controls">
-                <button class="keyvisual-motion-toggle" type="button" data-keyvisual-toggle aria-controls="keyvisual-motion-layers" aria-pressed="false" hidden>フィルムの動き・写真切替を停止</button>
+                <button class="keyvisual-motion-toggle" type="button" data-keyvisual-toggle aria-controls="keyvisual-film-light" hidden>フィルムの光を一時停止</button>
               </div>
-              <ul class="keyvisual-sr-only" data-keyvisual-current-photos aria-label="フィルム内の現在の写真"></ul>
-              <figcaption id="keyvisual-motion-description" class="keyvisual-sr-only">フィルム内には、フォトクロニクルで公開している舞踏研究部の記録写真を表示します。動きと写真の切替は停止できます。画面外・省データ設定・動きを減らす設定では停止します。</figcaption>
+              <figcaption id="keyvisual-motion-description" class="keyvisual-sr-only">公式キービジュアルのフィルムを光がたどります。動きは一時停止できます。</figcaption>
             </figure>
             <div class="keyvisual-summary">
               <p class="eyebrow"><span class="label-ja">参加申込受付中</span><span class="label-en">Save the Date</span></p>
@@ -2974,7 +2965,7 @@
     <script src="../assets/js/site.js?v=20261002-1" defer=""></script>
     <script src="../assets/js/photo-library.js?v=20260809-3" defer=""></script>
     <script src="../assets/js/festa60-film-hero.js?v=20260830-5" defer=""></script>
-    <script src="../assets/js/festa60-keyvisual-motion.js?v=20261002-2" defer=""></script>
+    <script src="../assets/js/festa60-keyvisual-light.js?v=20261126-1" defer=""></script>
     <script type="module" src="../assets/js/festa60-public-summary.js?v=20261108-1"></script>
     <script type="module" src="../assets/js/festa60-event-schema.js?v=20261013-1"></script>
     <script type="module" src="../assets/js/festa60-shorts.js?v=20261113-1"></script>

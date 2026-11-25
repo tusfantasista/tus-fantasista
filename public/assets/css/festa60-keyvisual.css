@@ -1,4 +1,4 @@
-/* The supplied artwork is preserved; only its film layers and photo windows move. */
+/* Keep the original image in place and mask the moving light to the two film strips. */
 .hero.hero--keyvisual {
   min-height: 0;
   padding: 40px 0 62px;
@@ -50,50 +50,49 @@
   display: block;
 }
 
-.keyvisual-motion-layers,
-.keyvisual-motion-film,
-.keyvisual-motion-layers img,
-.keyvisual-motion-layers canvas {
+.keyvisual-film-light,
+.keyvisual-film-light__strip {
   position: absolute;
   inset: 0;
-  display: block;
-  width: 100%;
-  height: 100%;
+  overflow: hidden;
   pointer-events: none;
 }
 
-.keyvisual-motion-layers {
-  overflow: hidden;
+.keyvisual-film-light {
+  mix-blend-mode: screen;
 }
 
-.keyvisual-artwork .keyvisual-motion-layers img {
-  height: 100%;
-  aspect-ratio: auto;
+.keyvisual-film-light__strip {
+  mask-size: 100% 100%;
+  mask-repeat: no-repeat;
 }
 
-.keyvisual-motion-film {
-  transform: none;
+.keyvisual-film-light__strip--lower {
+  mask-image: url("../img/festa60/keyvisual-motion-20261002-lower-film.webp");
 }
 
-.keyvisual-motion-foreground {
-  z-index: 2;
+.keyvisual-film-light__strip--upper {
+  mask-image: url("../img/festa60/keyvisual-motion-20261002-upper-film.webp");
 }
 
-.keyvisual-figure[data-motion-state="running"] .keyvisual-motion-film {
-  will-change: transform;
-  animation: keyvisual-film-upper 28s ease-in-out infinite;
+.keyvisual-film-light__strip::before {
+  position: absolute;
+  top: 35%;
+  left: 18%;
+  width: 64%;
+  height: 42%;
+  background: radial-gradient(ellipse, rgba(255, 223, 152, .76) 4%, rgba(223, 141, 57, .32) 28%, transparent 67%);
+  opacity: 0;
+  content: "";
+  animation: keyvisual-light-lower 10s ease-in-out infinite both paused;
 }
 
-.keyvisual-figure[data-motion-state="running"] .keyvisual-motion-film--lower {
-  animation-name: keyvisual-film-lower;
-  animation-duration: 32s;
+.keyvisual-film-light__strip--upper::before {
+  animation-name: keyvisual-light-upper;
 }
 
-.keyvisual-figure[data-motion-state="paused"] .keyvisual-motion-film,
-.keyvisual-figure[data-motion-state="static"] .keyvisual-motion-film {
-  animation: none;
-  transform: none;
-  will-change: auto;
+.keyvisual-figure[data-motion-state="running"] .keyvisual-film-light__strip::before {
+  animation-play-state: running;
 }
 
 .keyvisual-motion-controls {
@@ -101,7 +100,8 @@
 }
 
 .keyvisual-motion-toggle {
-  margin: 12px 0 0;
+  margin: 4px 0 0;
+  min-height: 44px;
   padding: 6px 0 6px 12px;
   color: #c8b38c;
   border: 0;
@@ -117,32 +117,29 @@
   outline-offset: 4px;
 }
 
-.keyvisual-motion-layers[hidden],
+.keyvisual-film-light[hidden],
 .keyvisual-motion-toggle[hidden] {
   display: none;
 }
 
-@keyframes keyvisual-film-upper {
-  0%, 100% { transform: translate(0, 0); }
-  33% { transform: translate(var(--keyvisual-shift, 1px), calc(var(--keyvisual-shift, 1px) * -.35)); }
-  66% { transform: translate(calc(var(--keyvisual-shift, 1px) * -.7), calc(var(--keyvisual-shift, 1px) * .4)); }
+@keyframes keyvisual-light-lower {
+  0%, 100% { transform: translate(-105%, 48%); opacity: 0; }
+  14% { transform: translate(-63%, 46%); opacity: .9; }
+  37% { transform: translate(53%, 39%); opacity: .7; }
+  53%, 99% { transform: translate(113%, 26%); opacity: 0; }
 }
 
-@keyframes keyvisual-film-lower {
-  0%, 100% { transform: translate(0, 0); }
-  33% { transform: translate(calc(var(--keyvisual-shift, 1px) * -.8), calc(var(--keyvisual-shift, 1px) * .25)); }
-  66% { transform: translate(calc(var(--keyvisual-shift, 1px) * .7), calc(var(--keyvisual-shift, 1px) * -.35)); }
+@keyframes keyvisual-light-upper {
+  0%, 25%, 100% { transform: translate(-86%, 2%); opacity: 0; }
+  38% { transform: translate(-62%, -23%); opacity: .86; }
+  62% { transform: translate(-20%, -84%); opacity: .72; }
+  79%, 99% { transform: translate(25%, -118%); opacity: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .keyvisual-motion-layers,
+  .keyvisual-film-light,
   .keyvisual-motion-toggle {
     display: none;
-  }
-
-  .keyvisual-motion-film {
-    animation: none !important;
-    transform: none !important;
   }
 }
 
