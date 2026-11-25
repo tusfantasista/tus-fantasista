@@ -2240,7 +2240,7 @@
     <link rel="stylesheet" href="../assets/css/enhancements.css?v=20260718-2">
     <link rel="stylesheet" href="../assets/css/photo-library.css">
     <link rel="stylesheet" href="../assets/css/festa60-film-hero.css?v=20260830-11">
-    <link rel="stylesheet" href="../assets/css/festa60-keyvisual.css?v=20261126-2">
+    <link rel="stylesheet" href="../assets/css/festa60-keyvisual.css?v=20261126-3">
     <noscript><style>.keyvisual-opening-video { display: none !important; }</style></noscript>
     <link rel="stylesheet" href="../assets/css/festa60-home-compact.css?v=20261116-1">
     <link rel="stylesheet" href="../assets/css/festa60-shorts.css?v=20261116-1">
@@ -2286,13 +2286,18 @@
                 </picture>
                 <video id="keyvisual-opening-video" class="keyvisual-opening-video"
                   width="640" height="906" muted playsinline preload="none" aria-hidden="true"
-                  poster="./media/keyvisual-opening-20261126-start.webp"
-                  data-src="./media/keyvisual-opening-20261126.mp4"></video>
+                  poster="./media/keyvisual-archive-opening-20261126-start.webp"
+                  data-src="./media/keyvisual-archive-opening-20261126.mp4"></video>
+                <span id="keyvisual-film-light" class="keyvisual-film-light" aria-hidden="true" hidden>
+                  <span class="keyvisual-film-light__strip keyvisual-film-light__strip--lower"></span>
+                  <span class="keyvisual-film-light__strip keyvisual-film-light__strip--upper"></span>
+                </span>
               </a>
               <div class="keyvisual-motion-controls">
                 <button class="keyvisual-motion-toggle" type="button" data-keyvisual-toggle aria-controls="keyvisual-opening-video" hidden>映像を一時停止</button>
+                <button class="keyvisual-motion-toggle" type="button" data-keyvisual-light-toggle aria-controls="keyvisual-film-light" hidden>フィルムの光を一時停止</button>
               </div>
-              <figcaption id="keyvisual-motion-description" class="keyvisual-sr-only">無音の開幕映像が終わると、公式キービジュアルが表示されます。</figcaption>
+              <figcaption id="keyvisual-motion-description" class="keyvisual-sr-only">無音の開幕映像が終わると、公式キービジュアルのフィルムを光がたどります。映像と光の動きは、それぞれ一時停止できます。</figcaption>
             </figure>
             <div class="keyvisual-summary">
               <p class="eyebrow"><span class="label-ja">参加申込受付中</span><span class="label-en">Save the Date</span></p>
@@ -2966,7 +2971,7 @@
     <script src="../assets/js/site.js?v=20261002-1" defer=""></script>
     <script src="../assets/js/photo-library.js?v=20260809-3" defer=""></script>
     <script src="../assets/js/festa60-film-hero.js?v=20260830-5" defer=""></script>
-    <script src="../assets/js/festa60-keyvisual-opening.js?v=20261126-2" defer=""></script>
+    <script src="../assets/js/festa60-keyvisual-opening.js?v=20261126-3" defer=""></script>
     <script type="module" src="../assets/js/festa60-public-summary.js?v=20261108-1"></script>
     <script type="module" src="../assets/js/festa60-event-schema.js?v=20261013-1"></script>
     <script type="module" src="../assets/js/festa60-shorts.js?v=20261113-1"></script>
