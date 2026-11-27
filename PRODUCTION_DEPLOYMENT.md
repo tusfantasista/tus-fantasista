@@ -44,6 +44,8 @@ In Stripe Dashboard, enable cards and bank transfer for the account. Apple Pay a
 
 Before deploying code that enables the hardened bank-transfer flow, apply `migrations/20260808_harden_bank_transfer_flow.sql` to the production D1 database. Before deploying the versioned pricing and supporter-publication update, also apply `migrations/20260810_add_pricing_supporter_publication.sql`. Confirm both migrations and flows in staging first. See `docs/FESTA60_REGISTRATION_PAYMENT_DESIGN.md` for the payment state model and `docs/FESTA60_PRICING_DONATION_DESIGN.md` for pricing compatibility, public aggregation, and the required release order.
 
+Before deploying the approved bank-transfer plan-upgrade feature, apply `migrations/20261127_add_application_plan_upgrades.sql` to `festa60_production`. Keep the original payment and plan-upgrade ledger available for reconciliation.
+
 Set `PRICING_RULE_EFFECTIVE_AT` to the approved JST changeover instant. Participation progress is visible from zero, including OBOG and companion counts and participating graduation decades. The former `PUBLIC_PARTICIPANT_COUNT_THRESHOLD` environment variable is ignored. Back up D1 before each migration. Do not deploy Worker code that reads the new columns before the pricing migration succeeds.
 
 Create a Cloudflare Access application that protects both `/festa60-admin/*` and `/api/festa60/admin/*`. Allow only approved FESTA office members. Verify that an unauthenticated request cannot retrieve the dashboard HTML, JSON API, or CSV export before accepting production applications.

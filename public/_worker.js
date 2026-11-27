@@ -1404,6 +1404,21 @@ async function hydrateApplicationLineItems(db, application) {
     ...item,
     metadata: item.metadata_json ? JSON.parse(item.metadata_json) : {}
   }));
+  const upgrades = await db.prepare(
+    `SELECT to_ticket_type, amount_jpy FROM application_plan_upgrades
+       WHERE application_id = ? AND applied_at IS NOT NULL AND status IN ('applied', 'review')
+       ORDER BY applied_at, id`
+  ).bind(application.id).all();
+  for (const upgrade of upgrades.results || []) {
+    application.line_items.push({
+      item_type: "plan_upgrade",
+      label: `参加プラン変更（${upgrade.to_ticket_type.endsWith("__gold") ? "ゴールド" : "シルバー"}）`,
+      quantity: 1,
+      unit_amount_jpy: upgrade.amount_jpy,
+      amount_jpy: upgrade.amount_jpy,
+      metadata: { ticket_type: upgrade.to_ticket_type }
+    });
+  }
   application.amount_total = application.total_amount_jpy;
   return application;
 }
@@ -1473,7 +1488,15 @@ function applicationStatusForPayment(paymentStatus) {
 __name(applicationStatusForPayment, "applicationStatusForPayment");
 async function listApplications(db) {
   const result = await db.prepare(
-    `SELECT
+    `WITH plan_upgrades AS (
+       SELECT application_id,
+              SUM(CASE WHEN applied_at IS NOT NULL THEN amount_jpy - refunded_amount_jpy ELSE 0 END) AS paid_jpy,
+              MAX(CASE WHEN applied_at IS NOT NULL THEN 1 ELSE 0 END) AS has_applied,
+              MAX(CASE WHEN status = 'review' THEN 1 ELSE 0 END) AS needs_review
+         FROM application_plan_upgrades
+        GROUP BY application_id
+     )
+     SELECT
         a.id, a.application_code, a.full_name, a.full_name_kana, a.email, a.phone,
         a.family_name, a.given_name, a.family_name_kana, a.given_name_kana,
         a.graduation_year, a.school_lineage, a.postal_code, a.address,
@@ -1488,8 +1511,14 @@ async function listApplications(db) {
         a.application_received_email_sent_at,
         m.member_code, m.full_name AS matched_member_name,
         p.stripe_checkout_session_id, p.stripe_payment_intent_id, p.stripe_customer_id, p.stripe_event_id,
-        p.status AS latest_payment_status, p.amount_total,
-        p.amount_received_jpy, p.amount_remaining_jpy, p.partial_payment_at, p.partial_payment_email_sent_at,
+        p.status AS latest_payment_status,
+        CASE WHEN u.has_applied = 1 THEN a.total_amount_jpy ELSE p.amount_total END AS amount_total,
+        CASE WHEN u.paid_jpy > 0 THEN
+          COALESCE(NULLIF(p.amount_received_jpy, 0), CASE WHEN p.status = 'paid' THEN p.amount_total END, 0) + u.paid_jpy
+          ELSE p.amount_received_jpy END AS amount_received_jpy,
+        p.amount_remaining_jpy, p.partial_payment_at, p.partial_payment_email_sent_at,
+        COALESCE(u.paid_jpy, 0) AS plan_upgrade_amount_jpy,
+        COALESCE(u.needs_review, 0) AS plan_upgrade_needs_review,
         p.instructions_email_sent_at, p.payment_confirmed_email_sent_at,
         p.unreconciled_amount_jpy, p.cash_balance_attention_at, p.cash_balance_alert_email_sent_at,
         p.payment_method AS latest_payment_method, p.payment_provider AS latest_payment_provider,
@@ -1506,6 +1535,7 @@ async function listApplications(db) {
         ) AS companion_summary
        FROM applications a
        LEFT JOIN members m ON m.id = a.member_id
+       LEFT JOIN plan_upgrades u ON u.application_id = a.id
        LEFT JOIN payments p ON p.id = (
         SELECT id FROM payments
         WHERE application_id = a.id
@@ -2144,6 +2174,321 @@ async function reissueRefundedCardPayment({ db, env, request, applicationId, con
   return { application: current, session, reused: false, email_delivery: emailDelivery };
 }
 __name(reissueRefundedCardPayment, "reissueRefundedCardPayment");
+
+const NEXT_SUPPORT_TIER = { bronze: "silver", silver: "gold" };
+
+class PlanUpgradeError extends Error {
+  constructor(code, message, status = 409, details = {}) {
+    super(message);
+    this.code = code;
+    this.status = status;
+    this.details = details;
+  }
+}
+
+async function findApplicationPlanUpgrade(db, id) {
+  return db.prepare("SELECT * FROM application_plan_upgrades WHERE id = ?").bind(id).first();
+}
+
+function assertPlanUpgradeIntent(upgrade, intent) {
+  if (
+    typeof intent?.id !== "string" || !intent.id ||
+    intent.id !== upgrade.stripe_payment_intent_id ||
+    intent?.customer !== upgrade.stripe_customer_id ||
+    intent?.metadata?.festa60_plan_upgrade_id !== upgrade.id ||
+    intent?.currency !== "jpy" ||
+    Number(intent?.amount) !== upgrade.amount_jpy ||
+    !intent.payment_method_types?.includes("customer_balance")
+  ) {
+    throw new PlanUpgradeError("upgrade_review_required", "Stripeの差額決済を照合できません。決済状況を確認してください。");
+  }
+}
+
+async function readPlanUpgradeCashBalance(stripeSecret, customerId) {
+  const response = await fetch(
+    `https://api.stripe.com/v1/customers/${encodeURIComponent(customerId)}/cash_balance`,
+    { headers: { authorization: `Bearer ${stripeSecret}` } }
+  );
+  const balance = await response.json();
+  if (!response.ok || balance.customer !== customerId) {
+    throw new Error(`Stripe cash balance retrieval failed: ${balance.error?.message || response.status}`);
+  }
+  const available = Number(balance.available?.jpy || 0);
+  if (!Number.isSafeInteger(available) || available < 0) throw new Error("Stripe JPY cash balance is invalid.");
+  return available;
+}
+
+async function createPlanUpgradeIntent(stripeSecret, upgrade, applicationCode) {
+  const body = new URLSearchParams({
+    amount: String(upgrade.amount_jpy),
+    currency: "jpy",
+    customer: upgrade.stripe_customer_id,
+    description: `FANTASISTA 60周年記念FESTA プラン変更差額（${applicationCode}）`,
+    "payment_method_types[0]": "customer_balance",
+    "metadata[festa60_plan_upgrade_id]": upgrade.id,
+    "metadata[application_code]": applicationCode
+  });
+  const response = await fetch("https://api.stripe.com/v1/payment_intents", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${stripeSecret}`,
+      "content-type": "application/x-www-form-urlencoded",
+      "idempotency-key": `festa60-plan-upgrade-create-${upgrade.id}`
+    },
+    body
+  });
+  const intent = await response.json();
+  if (!response.ok) throw new Error(`Stripe plan upgrade creation failed: ${intent.error?.message || response.status}`);
+  assertPlanUpgradeIntent({ ...upgrade, stripe_payment_intent_id: intent.id }, intent);
+  if (intent.status !== "requires_payment_method") throw new Error("A new Stripe plan upgrade intent was not awaiting confirmation.");
+  return intent;
+}
+
+async function markPlanUpgradeForReview(db, upgrade, reason, stripeEventId = null, refundedAmount = 0) {
+  const now = nowIso();
+  const auditId = newId("aud");
+  await db.batch([
+    db.prepare(
+      `INSERT INTO audit_logs (id, actor, action, target_type, target_id, details_json, created_at)
+       SELECT ?, 'stripe', 'application.plan_upgrade_review', 'application', application_id, ?, ?
+         FROM application_plan_upgrades
+        WHERE id = ? AND (status <> 'review' OR refunded_amount_jpy < ?)`
+    ).bind(auditId, JSON.stringify({
+      plan_upgrade_id: upgrade.id,
+      payment_intent_id: upgrade.stripe_payment_intent_id,
+      reason,
+      refunded_amount_jpy: refundedAmount,
+      stripe_event_id: stripeEventId
+    }), now, upgrade.id, refundedAmount),
+    db.prepare(
+      `UPDATE application_plan_upgrades
+          SET status = 'review', refunded_amount_jpy = MAX(refunded_amount_jpy, ?), updated_at = ?
+        WHERE id = ? AND EXISTS (SELECT 1 FROM audit_logs WHERE id = ?)`
+    ).bind(refundedAmount, now, upgrade.id, auditId)
+  ]);
+}
+
+async function applySettledPlanUpgrade(db, upgrade, intent, {
+  actor = "stripe",
+  stripeEventId = null,
+  requestMeta = {}
+} = {}) {
+  assertPlanUpgradeIntent(upgrade, intent);
+  if (intent.status !== "succeeded" || Number(intent.amount_received) !== upgrade.amount_jpy) {
+    throw new PlanUpgradeError("upgrade_review_required", "Stripeの差額全額の入金を確認できません。");
+  }
+  if (upgrade.status !== "prepared") return upgrade;
+  const now = nowIso();
+  const auditId = newId("aud");
+  await db.batch([
+    db.prepare(
+      `INSERT INTO audit_logs (id, actor, action, target_type, target_id, details_json, ip_address, user_agent, created_at)
+       SELECT ?, ?, 'application.plan_upgrade_applied', 'application', a.id, ?, ?, ?, ?
+         FROM applications a JOIN application_plan_upgrades u ON u.application_id = a.id
+        WHERE u.id = ? AND u.status = 'prepared' AND u.stripe_payment_intent_id = ?
+          AND a.ticket_type = u.from_ticket_type AND a.payment_status = 'paid' AND a.status = 'confirmed'
+          AND a.attendance_status = 'confirmed' AND a.total_amount_jpy > 0
+          AND EXISTS (
+            SELECT 1 FROM payments p
+             WHERE p.application_id = a.id AND p.stripe_payment_intent_id = a.external_payment_id
+               AND p.stripe_customer_id = u.stripe_customer_id AND p.status = 'paid'
+               AND p.payment_provider = 'stripe' AND p.payment_method = 'bank_transfer'
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM application_plan_upgrades other
+             WHERE other.application_id = a.id AND other.status = 'review'
+          )`
+    ).bind(auditId, actor, JSON.stringify({
+      plan_upgrade_id: upgrade.id,
+      payment_intent_id: intent.id,
+      from_ticket_type: upgrade.from_ticket_type,
+      to_ticket_type: upgrade.to_ticket_type,
+      difference_jpy: upgrade.amount_jpy,
+      stripe_event_id: stripeEventId
+    }), requestMeta.ip_address || null, requestMeta.user_agent || null, now, upgrade.id, intent.id),
+    db.prepare(
+      `UPDATE application_plan_upgrades
+          SET status = 'applied', applied_at = ?, updated_at = ?
+        WHERE id = ? AND EXISTS (SELECT 1 FROM audit_logs WHERE id = ?)`
+    ).bind(now, now, upgrade.id, auditId),
+    db.prepare(
+      `UPDATE applications
+          SET ticket_type = ?, total_amount_jpy = total_amount_jpy + ?, donation_equivalent_jpy = ?, updated_at = ?
+        WHERE id = ? AND EXISTS (SELECT 1 FROM audit_logs WHERE id = ?)`
+    ).bind(upgrade.to_ticket_type, upgrade.amount_jpy, donationEquivalentForTicket(upgrade.to_ticket_type), now,
+      upgrade.application_id, auditId)
+  ]);
+  const current = await findApplicationPlanUpgrade(db, upgrade.id);
+  if (current?.status === "prepared") {
+    await markPlanUpgradeForReview(db, current, "application_changed_after_payment", stripeEventId);
+    return findApplicationPlanUpgrade(db, upgrade.id);
+  }
+  return current;
+}
+
+async function refreshPlanUpgradeBalance(db, stripeSecret, upgrade) {
+  const queriedAt = nowIso();
+  const balance = await readPlanUpgradeCashBalance(stripeSecret, upgrade.stripe_customer_id);
+  await db.prepare(
+    `UPDATE payments SET unreconciled_amount_jpy = ?,
+        cash_balance_attention_at = CASE WHEN ? > 0 THEN COALESCE(cash_balance_attention_at, ?) ELSE NULL END,
+        updated_at = ?
+      WHERE application_id = ? AND stripe_customer_id = ? AND payment_provider = 'stripe' AND status = 'paid'
+        AND stripe_payment_intent_id = (SELECT external_payment_id FROM applications WHERE id = payments.application_id)
+        AND (updated_at IS NULL OR updated_at <= ?)`
+  ).bind(balance, balance, queriedAt, queriedAt, upgrade.application_id, upgrade.stripe_customer_id, queriedAt).run();
+  return balance;
+}
+
+async function applyApplicationPlanUpgrade({ db, env, applicationId, targetTier, confirmationCode, actor, requestMeta }) {
+  if (targetTier !== "silver" && targetTier !== "gold") {
+    throw new PlanUpgradeError("invalid_target_tier", "変更先はシルバーまたはゴールドを指定してください。", 400);
+  }
+  const application = await getApplicationById(db, applicationId);
+  if (!application) throw new PlanUpgradeError("not_found", "申込が見つかりません。", 404);
+  if (confirmationCode !== application.application_code) {
+    throw new PlanUpgradeError("application_code_mismatch", "確認用の受付番号が一致しません。", 400);
+  }
+  if (application.payment_status !== "paid" || application.status !== "confirmed" || application.attendance_status !== "confirmed" ||
+      application.payment_method !== "bank_transfer" || application.payment_provider !== "stripe") {
+    throw new PlanUpgradeError("ineligible_application", "Stripe銀行振込で入金済みの参加確定申込が対象です。");
+  }
+  const { base_ticket_type: base, support_tier: currentTier } = splitTicketType(application.ticket_type);
+  const toTicketType = normalizeTicketType(base, targetTier);
+  let upgrade = await db.prepare(
+    "SELECT * FROM application_plan_upgrades WHERE application_id = ? AND to_ticket_type = ?"
+  ).bind(application.id, toTicketType).first();
+  const review = await db.prepare(
+    "SELECT id FROM application_plan_upgrades WHERE application_id = ? AND status = 'review' LIMIT 1"
+  ).bind(application.id).first();
+  if (review) throw new PlanUpgradeError("upgrade_review_required", "プラン変更に確認が必要な取引があります。");
+  if (upgrade?.status === "applied") {
+    const current = await getApplicationById(db, application.id);
+    return {
+      application_code: application.application_code,
+      plan_tier: splitTicketType(current.ticket_type).support_tier,
+      difference_jpy: upgrade.amount_jpy,
+      cash_balance_jpy: await refreshPlanUpgradeBalance(db, requireStripeSecret(env), upgrade)
+    };
+  }
+  if (!base.startsWith("obog") || NEXT_SUPPORT_TIER[currentTier] !== targetTier) {
+    throw new PlanUpgradeError("ineligible_plan_upgrade", "ブロンズからシルバー、またはシルバーからゴールドへの変更が対象です。");
+  }
+  const original = await db.prepare(
+    `SELECT stripe_customer_id, stripe_payment_intent_id, amount_total, amount_received_jpy, currency
+       FROM payments
+      WHERE application_id = ? AND stripe_payment_intent_id = ?
+        AND payment_provider = 'stripe' AND payment_method = 'bank_transfer' AND status = 'paid'`
+  ).bind(application.id, application.external_payment_id).first();
+  if (!original?.stripe_customer_id || original.currency !== "jpy" || Number(original.amount_total) <= 0 ||
+      Number(original.amount_received_jpy) !== Number(original.amount_total)) {
+    throw new PlanUpgradeError("original_payment_not_verified", "元の銀行振込決済を確認できません。");
+  }
+  const priceArgs = [base, application.fee_period, application.reception_attendance, application.pricing_version];
+  const difference = attendingPlanAmount(targetTier, ...priceArgs) - attendingPlanAmount(currentTier, ...priceArgs);
+  if (!Number.isSafeInteger(difference) || difference <= 0) {
+    throw new PlanUpgradeError("upgrade_review_required", "プラン変更の差額を計算できません。");
+  }
+  const stripeSecret = requireStripeSecret(env);
+  const originalIntent = await retrieveStripePaymentIntent(stripeSecret, original.stripe_payment_intent_id);
+  if (originalIntent?.id !== original.stripe_payment_intent_id ||
+      originalIntent.customer !== original.stripe_customer_id || originalIntent.currency !== "jpy" ||
+      originalIntent.status !== "succeeded" || Number(originalIntent.amount) !== Number(original.amount_total) ||
+      Number(originalIntent.amount_received) !== Number(original.amount_total) ||
+      (originalIntent.metadata?.application_id && originalIntent.metadata.application_id !== application.id) ||
+      !originalIntent.payment_method_types?.includes("customer_balance")) {
+    throw new PlanUpgradeError("original_payment_not_verified", "Stripeで元の銀行振込決済を照合できません。");
+  }
+  if (!upgrade) {
+    const balance = await readPlanUpgradeCashBalance(stripeSecret, original.stripe_customer_id);
+    if (balance < difference) {
+      throw new PlanUpgradeError("insufficient_cash_balance", "Stripe残高が変更差額に達していません。", 409,
+        { cash_balance_jpy: balance, difference_jpy: difference });
+    }
+    const now = nowIso();
+    await db.prepare(
+      `INSERT INTO application_plan_upgrades
+        (id, application_id, from_ticket_type, to_ticket_type, stripe_customer_id, amount_jpy, status, created_at, updated_at)
+       SELECT ?, id, ticket_type, ?, ?, ?, 'prepared', ?, ? FROM applications
+        WHERE id = ? AND ticket_type = ? AND status = 'confirmed' AND payment_status = 'paid'
+          AND attendance_status = 'confirmed' AND external_payment_id = ?
+       ON CONFLICT(application_id, from_ticket_type, to_ticket_type) DO NOTHING`
+    ).bind(newId("upg"), toTicketType, original.stripe_customer_id, difference, now, now,
+      application.id, application.ticket_type, original.stripe_payment_intent_id).run();
+    upgrade = await db.prepare(
+      `SELECT * FROM application_plan_upgrades
+        WHERE application_id = ? AND from_ticket_type = ? AND to_ticket_type = ?`
+    ).bind(application.id, application.ticket_type, toTicketType).first();
+  }
+  if (!upgrade || upgrade.stripe_customer_id !== original.stripe_customer_id || upgrade.amount_jpy !== difference ||
+      upgrade.from_ticket_type !== application.ticket_type) {
+    throw new PlanUpgradeError("upgrade_review_required", "申込内容または決済の紐付けを確認してください。");
+  }
+  let intent;
+  if (!upgrade.stripe_payment_intent_id && upgrade.status === "prepared") {
+    intent = await createPlanUpgradeIntent(stripeSecret, upgrade, application.application_code);
+    await db.prepare(
+      `UPDATE application_plan_upgrades SET stripe_payment_intent_id = ?, updated_at = ?
+        WHERE id = ? AND status = 'prepared' AND stripe_payment_intent_id IS NULL`
+    ).bind(intent.id, nowIso(), upgrade.id).run();
+    upgrade = await findApplicationPlanUpgrade(db, upgrade.id);
+    if (upgrade?.stripe_payment_intent_id !== intent.id) {
+      throw new PlanUpgradeError("upgrade_review_required", "差額決済の紐付けを確認してください。");
+    }
+  }
+  if (upgrade.status === "prepared") {
+    intent = await retrieveStripePaymentIntent(stripeSecret, upgrade.stripe_payment_intent_id);
+    assertPlanUpgradeIntent(upgrade, intent);
+    if (intent.status === "requires_payment_method" || intent.status === "requires_confirmation") {
+      const balance = await readPlanUpgradeCashBalance(stripeSecret, upgrade.stripe_customer_id);
+      if (balance < difference) {
+        const racedIntent = await retrieveStripePaymentIntent(stripeSecret, intent.id);
+        if (racedIntent.status !== "succeeded") {
+          throw new PlanUpgradeError("insufficient_cash_balance", "Stripe残高が変更差額に達していません。", 409,
+            { cash_balance_jpy: balance, difference_jpy: difference });
+        }
+        intent = racedIntent;
+      } else {
+        const ready = await db.prepare(
+          `SELECT 1 AS ready FROM application_plan_upgrades u JOIN applications a ON a.id = u.application_id
+            WHERE u.id = ? AND u.status = 'prepared' AND u.stripe_payment_intent_id = ?
+              AND a.ticket_type = u.from_ticket_type AND a.payment_status = 'paid' AND a.status = 'confirmed'
+              AND a.attendance_status = 'confirmed' AND a.external_payment_id = ?
+              AND NOT EXISTS (
+                SELECT 1 FROM application_plan_upgrades other
+                 WHERE other.application_id = a.id AND other.status = 'review'
+              )`
+        ).bind(upgrade.id, intent.id, original.stripe_payment_intent_id).first();
+        try {
+          if (!ready) throw new PlanUpgradeError("upgrade_review_required", "申込の状態が変わりました。内容を再確認してください。");
+          // Confirmation retries always act on the same Stripe intent. Creation uses a stable idempotency key.
+          intent = await confirmStripePaymentIntent(stripeSecret, intent.id, null, new URLSearchParams({
+            "payment_method_data[type]": "customer_balance"
+          }));
+        } catch (error) {
+          const racedIntent = await retrieveStripePaymentIntent(stripeSecret, intent.id);
+          if (racedIntent.status !== "succeeded") throw error;
+          intent = racedIntent;
+        }
+      }
+    }
+    if (intent.status === "processing") {
+      throw new PlanUpgradeError("upgrade_processing", "Stripeの決済処理を確認中です。時間をおいて再確認してください。");
+    }
+    upgrade = await applySettledPlanUpgrade(db, upgrade, intent, { actor, requestMeta });
+  }
+  if (upgrade?.status !== "applied") {
+    throw new PlanUpgradeError("upgrade_review_required", "差額決済とプラン変更の状況を確認してください。");
+  }
+  const current = await getApplicationById(db, application.id);
+  return {
+    application_code: application.application_code,
+    plan_tier: splitTicketType(current.ticket_type).support_tier,
+    difference_jpy: difference,
+    cash_balance_jpy: await refreshPlanUpgradeBalance(db, stripeSecret, upgrade)
+  };
+}
+
 // api/festa60/admin/applications/[id].js
 async function onRequestPatch({ request, env, params }) {
   const auth = assertAdmin(request, env);
@@ -2151,6 +2496,17 @@ async function onRequestPatch({ request, env, params }) {
   try {
     const payload = await readJson(request);
     if (!payload) return badRequest("Invalid JSON payload.");
+    if (payload.action === "apply_plan_upgrade") {
+      return json({ ok: true, ...await applyApplicationPlanUpgrade({
+        db: requireDb(env),
+        env,
+        applicationId: params.id,
+        targetTier: payload.target_tier,
+        confirmationCode: payload.confirm_application_code,
+        actor: auth.actor,
+        requestMeta: getClientMeta(request)
+      }) });
+    }
     if (payload.action === "update_supporter_publication") {
       const application = await updateSupporterPublication(
         requireDb(env),
@@ -2284,6 +2640,9 @@ async function onRequestPatch({ request, env, params }) {
       } : null
     });
   } catch (error) {
+    if (error instanceof PlanUpgradeError) {
+      return json({ ok: false, error: error.code, message: error.message, ...error.details }, { status: error.status });
+    }
     if (String(error?.message || "").startsWith("Invalid payment status")) {
       return badRequest("Invalid payment status.");
     }
@@ -3043,15 +3402,15 @@ async function updateStripePaymentIntentAmount(stripeSecret, paymentIntentId, am
   return result;
 }
 __name(updateStripePaymentIntentAmount, "updateStripePaymentIntentAmount");
-async function confirmStripePaymentIntent(stripeSecret, paymentIntentId, idempotencyKey) {
+async function confirmStripePaymentIntent(stripeSecret, paymentIntentId, idempotencyKey, body = new URLSearchParams()) {
   const response = await fetch(`https://api.stripe.com/v1/payment_intents/${encodeURIComponent(paymentIntentId)}/confirm`, {
     method: "POST",
     headers: {
       authorization: `Bearer ${stripeSecret}`,
       "content-type": "application/x-www-form-urlencoded",
-      "idempotency-key": idempotencyKey
+      ...idempotencyKey && { "idempotency-key": idempotencyKey }
     },
-    body: new URLSearchParams()
+    body
   });
   const result = await response.json();
   if (!response.ok) {
@@ -3231,11 +3590,11 @@ async function processBankTransferProgress(env, db, paymentIntent, stripeEventId
   return { handled: false, status: "pending", ...progress };
 }
 __name(processBankTransferProgress, "processBankTransferProgress");
-async function markUnreconciledCashBalance(db, cashBalance, stripeEventId) {
+async function markUnreconciledCashBalance(db, cashBalance, stripeEventId, observedAt = null) {
   const customerId = cashBalance?.customer;
   const amount = Number(cashBalance?.available?.jpy || 0);
-  if (!customerId || amount <= 0) return null;
-  const now = nowIso();
+  if (!customerId || (!observedAt && amount <= 0)) return null;
+  const now = observedAt || nowIso();
   const payment = await db.prepare(
     `SELECT id, application_id
        FROM payments
@@ -3244,11 +3603,12 @@ async function markUnreconciledCashBalance(db, cashBalance, stripeEventId) {
        LIMIT 1`
   ).bind(customerId).first();
   if (payment) {
-    await db.prepare(
+    const result = await db.prepare(
       `UPDATE payments
           SET unreconciled_amount_jpy = ?, cash_balance_attention_at = ?, stripe_event_id = ?, updated_at = ?
-        WHERE id = ?`
-    ).bind(amount, now, stripeEventId || null, now, payment.id).run();
+        WHERE id = ? AND (updated_at IS NULL OR updated_at <= ?)`
+    ).bind(amount, amount > 0 ? now : null, stripeEventId || null, now, payment.id, now).run();
+    if (amount <= 0 || result.meta?.changes === 0) return null;
     await audit(db, {
       actor: "stripe",
       action: "payment.unreconciled_cash_balance",
@@ -3258,6 +3618,7 @@ async function markUnreconciledCashBalance(db, cashBalance, stripeEventId) {
     });
     return { application_id: payment.application_id, stripe_customer_id: customerId, amount_jpy: amount };
   }
+  if (amount <= 0) return null;
   const preview = await db.prepare(
     `SELECT id, applicant_email, applicant_name
        FROM bank_transfer_previews
@@ -3327,6 +3688,30 @@ function constantTimeEqual2(a, b) {
 }
 __name(constantTimeEqual2, "constantTimeEqual");
 
+async function processPlanUpgradeStripeEvent(env, db, event) {
+  const object = event.data.object;
+  const upgrade = await findApplicationPlanUpgrade(db, object.metadata.festa60_plan_upgrade_id);
+  if (!upgrade) throw new Error("Stripe plan upgrade event is not linked to a Festa 60 upgrade.");
+  if (event.type === "charge.refunded") {
+    const intentId = typeof object.payment_intent === "string" ? object.payment_intent : object.payment_intent?.id;
+    const refundedAmount = Number(object.amount_refunded);
+    if (intentId !== upgrade.stripe_payment_intent_id || object.customer !== upgrade.stripe_customer_id ||
+        object.currency !== "jpy" || Number(object.amount) !== upgrade.amount_jpy ||
+        !Number.isSafeInteger(refundedAmount) || refundedAmount <= 0 || refundedAmount > upgrade.amount_jpy) {
+      throw new Error("Stripe plan upgrade refund details do not match.");
+    }
+    await markPlanUpgradeForReview(db, upgrade, "refund", event.id, refundedAmount);
+    return;
+  }
+  assertPlanUpgradeIntent(upgrade, object);
+  if (event.type === "payment_intent.partially_funded") {
+    await markPlanUpgradeForReview(db, upgrade, "unexpected_partial_funding", event.id);
+    return;
+  }
+  const current = await applySettledPlanUpgrade(db, upgrade, object, { stripeEventId: event.id });
+  if (current?.status === "applied") await refreshPlanUpgradeBalance(db, requireStripeSecret(env), upgrade);
+}
+
 // api/festa60/stripe/webhook.js
 async function onRequestPost5({ request, env }) {
   const payload = await request.text();
@@ -3350,7 +3735,11 @@ async function onRequestPost5({ request, env }) {
       return json({ ok: true, received: true, duplicate: true });
     }
     try {
-      if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
+      const isPlanUpgradeEvent = event.data.object.metadata?.festa60_plan_upgrade_id &&
+        ["payment_intent.succeeded", "payment_intent.partially_funded", "charge.refunded"].includes(event.type);
+      if (isPlanUpgradeEvent) {
+        await processPlanUpgradeStripeEvent(env, db, event);
+      } else if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
         await markCheckoutCompleted(db, event.data.object, event.id);
         if (event.data.object.payment_status === "paid" && event.data.object.metadata?.application_id) {
           const application = await getApplicationById(db, event.data.object.metadata.application_id);
@@ -3380,7 +3769,22 @@ async function onRequestPost5({ request, env }) {
           );
           synchronization = await processBankTransferProgress(env, db, linked.paymentIntent, event.id);
         }
-        const attention = synchronization?.handled ? null : await markUnreconciledCashBalance(db, event.data.object, event.id);
+        let cashBalance = event.data.object;
+        let observedAt = null;
+        if (linkedPayment?.local_status === "paid") {
+          const upgrade = await db.prepare(
+            `SELECT u.id FROM application_plan_upgrades u JOIN applications a ON a.id = u.application_id
+              WHERE a.external_payment_id = ? AND u.stripe_customer_id = ? AND u.stripe_payment_intent_id IS NOT NULL
+              LIMIT 1`
+          ).bind(linkedPayment.stripe_payment_intent_id, customerId).first();
+          if (upgrade) {
+            // A cash event can arrive after the upgrade has consumed part of its original balance.
+            observedAt = nowIso();
+            const amount = await readPlanUpgradeCashBalance(requireStripeSecret(env), customerId);
+            cashBalance = { customer: customerId, available: { jpy: amount } };
+          }
+        }
+        const attention = synchronization?.handled ? null : await markUnreconciledCashBalance(db, cashBalance, event.id, observedAt);
         if (attention && env.CONTACT_EMAIL) {
           const emailResult = await maybeSendEmail(env, {
             to: env.CONTACT_EMAIL,

@@ -33,6 +33,7 @@ Gitコミット、GitHubへのpush、ローカル検査の完了だけを理由�
 7. `public/robots.txt` と `public/_headers` がレビュー環境を検索対象外にしていることを確認する。
 8. レビュー環境に `STAFF_PAYMENT_ACCESS_CODE` が暗号化シークレットとして設定されていることを確認する。
 9. 同じコミットの成功済みデプロイが既にないことを `wrangler pages deployment list` で確認する。
+10. プラン変更を含む版では、配信前に `migrations/20261127_add_application_plan_upgrades.sql` を `festa60_staging` に適用する。
 
 ## レビュー環境への反映
 
@@ -55,6 +56,7 @@ npx wrangler pages deploy public \
 - 一般申込はStripeサンドボックスへ遷移し、カード、対象端末のApple Pay・Google Pay、銀行振込の有効な方法が表示される。
 - StripeサンドボックスのWebhook送信先は `/api/festa60/stripe/webhook` とし、`checkout.session.completed`、`checkout.session.async_payment_succeeded`、`checkout.session.async_payment_failed`、`checkout.session.expired`、`payment_intent.succeeded`、`payment_intent.partially_funded`、`charge.refunded`、`cash_balance.funds_available` の8イベントを購読する。
 - 銀行振込の不足入金テストでは、D1の支払状態が `partially_funded`、申込状態が未確定のままとなり、確認済み入金額・不足額・メール送信時刻が記録されることを確認する。
+- プラン変更はStripeサンドボックスの残高だけを使う。元の入金が26,000円、未消込残高が20,000円なら、シルバー変更後の入金合計は36,000円、未消込残高は10,000円と表示される。元の決済額と同伴者情報を照合する。
 - `migrations/20260808_harden_bank_transfer_flow.sql` をレビューD1へ適用し、申込確定前入金、入金後の支払方法変更拒否、二重確定防止、未消込残高の管理画面表示を確認する。
 - `migrations/20260810_add_pricing_supporter_publication.sql` をレビューD1へ適用し、新料金版、寄付相当額、掲載同意項目、銀行振込プレビューの料金スナップショットを確認する。旧申込の確定金額を再計算しない。
 - `/api/festa60/config` が承認済みの `pricing_version` を返し、カードと銀行振込のサーバー計算額が同一になることを確認する。

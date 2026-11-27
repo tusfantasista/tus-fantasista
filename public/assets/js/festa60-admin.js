@@ -1,8 +1,12 @@
+import { ATTENDING_PLAN_TOTALS, splitTicketType } from "./festa60-pricing.js";
+
 (() => {
   "use strict";
 
   const API_URL = "../api/festa60/admin/applications";
   const CONFIG_URL = "../api/festa60/config";
+  const NEXT_SUPPORT_TIER = { bronze: "silver", silver: "gold" };
+  const submittedPlanUpgrades = new Set();
 
   const state = {
     applications: [],
@@ -247,6 +251,7 @@
     if (!response.ok || !result?.ok) {
       const error = new Error(result?.message || result?.error || `HTTP ${response.status}`);
       error.status = response.status;
+      error.result = result;
       throw error;
     }
     return result;
@@ -274,6 +279,7 @@
       renderBankTransferAlerts();
       applyFilters();
       elements.lastUpdated.textContent = `最終更新 ${formatDateTime(new Date().toISOString())}`;
+      return true;
     } catch (error) {
       elements.message.hidden = false;
       elements.message.className = "admin-message admin-message--error";
@@ -281,6 +287,7 @@
         ? "Cloudflare Accessの認証が必要です。ページを再読み込みして認証してください。"
         : "申込データを取得できませんでした。時間をおいて更新してください。";
       elements.lastUpdated.textContent = "取得失敗";
+      return false;
     } finally {
       elements.refreshButton.disabled = false;
     }
@@ -597,7 +604,58 @@
       && ["bank_transfer", "customer_balance"].includes(paymentMethod);
   }
 
-  function openApplicationDetail(applicationId) {
+  function availablePlanUpgrade(application) {
+    const { base_ticket_type: baseType, support_tier: sourceTier } = splitTicketType(application.ticket_type);
+    const targetTier = NEXT_SUPPORT_TIER[sourceTier];
+    if (!targetTier || !baseType.startsWith("obog") || Number(application.plan_upgrade_needs_review) === 1
+      || application.payment_provider !== "stripe" || application.payment_method !== "bank_transfer"
+      || !application.stripe_customer_id || !application.stripe_payment_intent_id
+      || effectivePaymentStatus(application) !== "paid" || application.status !== "confirmed"
+      || application.attendance_status !== "confirmed") return null;
+
+    const balance = Number(application.unreconciled_amount_jpy ?? NaN);
+    return {
+      key: `${application.application_code}:${targetTier}`,
+      baseType,
+      targetTier,
+      targetLabel: planLabel(`${baseType}__${targetTier}`),
+      difference: ATTENDING_PLAN_TOTALS[targetTier] - ATTENDING_PLAN_TOTALS[sourceTier],
+      recordedBalance: Number.isSafeInteger(balance) && balance >= 0 ? balance : null
+    };
+  }
+
+  function renderPlanUpgrade(application) {
+    if (Number(application.plan_upgrade_needs_review) === 1) return `
+      <section class="admin-amount-adjustment" aria-labelledby="plan-upgrade-title">
+        <h3 id="plan-upgrade-title">プラン変更の状況を要確認</h3>
+        <p>先にStripeの決済状況と事務局の変更記録を照合してください。</p>
+      </section>`;
+
+    const upgrade = availablePlanUpgrade(application);
+    if (!upgrade) return "";
+
+    const { recordedBalance, difference } = upgrade;
+    let balanceSummary = "CRMに未消込残高の記録がありません。";
+    if (recordedBalance !== null) {
+      const balance = formatYen(recordedBalance);
+      balanceSummary = recordedBalance >= difference
+        ? `CRM記録の未消込残高 ${balance}・変更後の見込み残高 ${formatYen(recordedBalance - difference)}。`
+        : `CRM記録の未消込残高 ${balance}・差額まで ${formatYen(difference - recordedBalance)}不足。`;
+    }
+
+    return `
+      <section class="admin-amount-adjustment" aria-labelledby="plan-upgrade-title">
+        <h3 id="plan-upgrade-title">上位プランへ変更</h3>
+        <p><strong>${escapeHtml(planLabel(application.ticket_type))} → ${escapeHtml(upgrade.targetLabel)}</strong><br>充当する差額 ${formatYen(difference)}</p>
+        <p>${balanceSummary}<br>実行時にStripeで最新の未消込残高を確認します。</p>
+        <div class="admin-amount-adjustment__controls">
+          <button class="admin-button admin-button--primary" type="button" data-apply-plan-upgrade="${escapeHtml(application.id)}" ${submittedPlanUpgrades.has(upgrade.key) ? "disabled" : ""}>残高を確認してプランを変更</button>
+        </div>
+        <p class="admin-amount-adjustment__message" data-plan-upgrade-message role="status" aria-live="polite"></p>
+      </section>`;
+  }
+
+  function openApplicationDetail(applicationId, planUpgradeNotice = "") {
     const application = state.applications.find((item) => item.id === applicationId);
     if (!application) return;
     const paymentStatus = effectivePaymentStatus(application);
@@ -606,6 +664,7 @@
       .filter(Boolean)
       .join(" ");
 
+    elements.dialog.dataset.applicationId = application.id;
     elements.dialogTitle.textContent = `${application.application_code} ${application.full_name || ""}`;
     elements.dialogContent.innerHTML = `
       <div class="admin-detail-summary">
@@ -658,6 +717,7 @@
           <dl class="admin-detail-list">
             ${detailRow("支払予定額", formatYen(expectedAmount(application)))}
             ${detailRow("入金確認額", formatYen(receivedAmount(application)))}
+            ${Number(application.plan_upgrade_amount_jpy || 0) > 0 ? detailRow("プラン変更に充当した額", formatYen(application.plan_upgrade_amount_jpy)) : ""}
             ${detailRow("不足額", formatYen(outstandingAmount(application)))}
             ${detailRow("入金状態", paymentLabels[paymentStatus] || paymentStatus)}
             ${detailRow("入金確認日", formatDateTime(application.paid_at))}
@@ -687,6 +747,8 @@
         <button class="admin-button" type="button" data-copy-value="${escapeHtml(application.application_code)}">受付番号をコピー</button>
         <a class="admin-button" href="mailto:${escapeHtml(application.email || "")}">メールを作成</a>
       </div>
+      ${planUpgradeNotice ? `<p class="admin-message" role="status">${escapeHtml(planUpgradeNotice)}</p>` : ""}
+      ${renderPlanUpgrade(application)}
       ${Number(application.donation_equivalent_jpy || 0) > 0 ? `
         <section class="admin-amount-adjustment" aria-labelledby="supporter-publication-title">
           <h3 id="supporter-publication-title">寄付者名掲載・当日表示を更新</h3>
@@ -728,6 +790,53 @@
           <p class="admin-amount-adjustment__message" data-refresh-bank-message="${escapeHtml(application.id)}" role="status" aria-live="polite"></p>
         </section>` : ""}`;
     elements.dialog.showModal();
+  }
+
+  async function applyPlanUpgrade(applicationId, button) {
+    const application = state.applications.find((item) => item.id === applicationId);
+    const upgrade = application && availablePlanUpgrade(application);
+    if (!upgrade || button.disabled || submittedPlanUpgrades.has(upgrade.key)) return;
+
+    const { application_code: applicationCode } = application;
+    if (!window.confirm(`${applicationCode} ${application.full_name || ""}\n${planLabel(application.ticket_type)} → ${upgrade.targetLabel}\nStripeの未消込残高から差額 ${formatYen(upgrade.difference)} を充当して変更しますか？`)) return;
+
+    submittedPlanUpgrades.add(upgrade.key);
+    button.disabled = true;
+    const message = elements.dialogContent.querySelector("[data-plan-upgrade-message]");
+    if (message) message.textContent = "Stripeの残高を確認しています。";
+    let result;
+    try {
+      result = await patchJson(`${API_URL}/${encodeURIComponent(applicationCode)}`, {
+        action: "apply_plan_upgrade",
+        target_tier: upgrade.targetTier,
+        confirm_application_code: applicationCode
+      });
+    } catch (error) {
+      submittedPlanUpgrades.delete(upgrade.key);
+      if (elements.dialog.open && elements.dialog.dataset.applicationId === applicationId) {
+        const currentMessage = elements.dialogContent.querySelector("[data-plan-upgrade-message]");
+        const currentButton = elements.dialogContent.querySelector("[data-apply-plan-upgrade]");
+        if (currentMessage) {
+          const balance = error.result?.cash_balance_jpy;
+          const latestBalance = Number.isSafeInteger(balance) && balance >= 0 ? ` Stripe確認残高 ${formatYen(balance)}。` : "";
+          currentMessage.textContent = `プランを変更できませんでした。${error.message}${latestBalance}`;
+        }
+        if (currentButton) currentButton.disabled = false;
+      }
+      return;
+    }
+
+    const confirmedLabel = planLabel(`${upgrade.baseType}__${result.plan_tier}`);
+    const notice = `${applicationCode} の現在のプランは${confirmedLabel}です。充当額 ${formatYen(result.difference_jpy)}、未消込残高 ${formatYen(result.cash_balance_jpy)}。`;
+    const reloaded = await loadApplications();
+    if (elements.dialog.open && elements.dialog.dataset.applicationId === applicationId) {
+      if (reloaded) {
+        openApplicationDetail(applicationId, notice);
+      } else {
+        const currentMessage = elements.dialogContent.querySelector("[data-plan-upgrade-message]");
+        if (currentMessage) currentMessage.textContent = `${notice} 一覧を再読み込みしてください。`;
+      }
+    }
   }
 
   async function adjustBankTransferAmount(applicationId, button) {
@@ -854,6 +963,11 @@
       if (button) openApplicationDetail(button.dataset.applicationId);
     });
     elements.dialogContent.addEventListener("click", async (event) => {
+      const upgradeButton = event.target.closest("[data-apply-plan-upgrade]");
+      if (upgradeButton) {
+        await applyPlanUpgrade(upgradeButton.dataset.applyPlanUpgrade, upgradeButton);
+        return;
+      }
       const supporterButton = event.target.closest("[data-save-supporter-publication]");
       if (supporterButton) {
         await saveSupporterPublication(supporterButton.dataset.saveSupporterPublication, supporterButton);
