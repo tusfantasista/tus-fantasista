@@ -46,6 +46,8 @@ Before deploying code that enables the hardened bank-transfer flow, apply `migra
 
 Before deploying the approved bank-transfer plan-upgrade feature, apply `migrations/20261127_add_application_plan_upgrades.sql` to `festa60_production`. Keep the original payment and plan-upgrade ledger available for reconciliation.
 
+For an approved release that also permits a Gold deposit, apply `migrations/20261127_add_gold_plan_deposits.sql` after the upgrade migration. Record the participant's agreement to the deposit and refund terms before collecting it.
+
 Set `PRICING_RULE_EFFECTIVE_AT` to the approved JST changeover instant. Participation progress is visible from zero, including OBOG and companion counts and participating graduation decades. The former `PUBLIC_PARTICIPANT_COUNT_THRESHOLD` environment variable is ignored. Back up D1 before each migration. Do not deploy Worker code that reads the new columns before the pricing migration succeeds.
 
 Create a Cloudflare Access application that protects both `/festa60-admin/*` and `/api/festa60/admin/*`. Allow only approved FESTA office members. Verify that an unauthenticated request cannot retrieve the dashboard HTML, JSON API, or CSV export before accepting production applications.

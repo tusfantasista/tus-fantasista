@@ -16,6 +16,9 @@ const originalAmount = 26000;
 const migration = await readFile(
   new URL("../migrations/20261127_add_application_plan_upgrades.sql", import.meta.url), "utf8"
 );
+const depositMigration = await readFile(
+  new URL("../migrations/20261127_add_gold_plan_deposits.sql", import.meta.url), "utf8"
+);
 
 function fixture({ balance = 20000, originalCustomer = customerId } = {}) {
   const sqlite = new DatabaseSync(":memory:");
@@ -65,6 +68,7 @@ function fixture({ balance = 20000, originalCustomer = customerId } = {}) {
     );
   `);
   sqlite.exec(migration);
+  sqlite.exec(depositMigration);
   sqlite.prepare(`
     INSERT INTO applications (
       id, application_code, full_name, email, graduation_year, school_lineage, ticket_type, fee_period,
@@ -131,6 +135,7 @@ function fixture({ balance = 20000, originalCustomer = customerId } = {}) {
     payment_method_types: ["customer_balance"], livemode: false
   };
   const intents = new Map();
+  const charges = new Map();
   const idempotentCreates = new Map();
   const debits = [];
   const unexpected = [];
@@ -160,14 +165,19 @@ function fixture({ balance = 20000, originalCustomer = customerId } = {}) {
       assert.notEqual(form.get("confirm"), "true", "CRM must link the intent before payment");
       assert.equal(form.has("receipt_email"), false);
       assert.equal(form.has("payment_method_options[customer_balance][funding_type]"), false);
-      assert.ok(form.get("metadata[festa60_plan_upgrade_id]"));
+      const depositId = form.get("metadata[festa60_plan_deposit_id]");
+      const upgradeId = form.get("metadata[festa60_plan_upgrade_id]");
+      assert.ok(Boolean(depositId) !== Boolean(upgradeId), "Stripe intent has exactly one ledger kind");
+      const metadata = depositId
+        ? { festa60_plan_deposit_id: depositId }
+        : { festa60_plan_upgrade_id: upgradeId };
       let intent = idempotentCreates.get(key);
       if (!intent) {
         intent = {
           id: `pi_fixture_upgrade_${intents.size + 1}`, customer: customerId,
           amount: Number(form.get("amount")), amount_received: 0,
           currency: "jpy", status: "requires_payment_method", payment_method_types: ["customer_balance"],
-          livemode: false, metadata: { festa60_plan_upgrade_id: form.get("metadata[festa60_plan_upgrade_id]") }
+          livemode: false, metadata
         };
         intents.set(intent.id, intent);
         idempotentCreates.set(key, intent);
@@ -181,8 +191,10 @@ function fixture({ balance = 20000, originalCustomer = customerId } = {}) {
     if (intent && method === "POST" && operation === "confirm") {
       assert.equal(form.get("payment_method_data[type]"), "customer_balance");
       assert.equal(form.has("payment_method_options[customer_balance][funding_type]"), false);
-      const link = sqlite.prepare("SELECT * FROM application_plan_upgrades WHERE stripe_payment_intent_id = ?").get(intentId);
-      assert.equal(link?.id, intent.metadata.festa60_plan_upgrade_id);
+      const depositId = intent.metadata.festa60_plan_deposit_id;
+      const table = depositId ? "application_plan_upgrade_deposits" : "application_plan_upgrades";
+      const link = sqlite.prepare(`SELECT id FROM ${table} WHERE stripe_payment_intent_id = ?`).get(intentId);
+      assert.equal(link?.id, depositId ?? intent.metadata.festa60_plan_upgrade_id);
       if (intent.status === "succeeded") {
         return Response.json({ error: { message: "PaymentIntent is already succeeded." } }, { status: 400 });
       }
@@ -191,26 +203,41 @@ function fixture({ balance = 20000, originalCustomer = customerId } = {}) {
       debits.push(intent.amount);
       intent.status = "succeeded";
       intent.amount_received = intent.amount;
+      intent.latest_charge = `ch_fixture_${charges.size + 1}`;
+      charges.set(intent.latest_charge, {
+        id: intent.latest_charge, customer: customerId, payment_intent: intentId,
+        amount: intent.amount, amount_refunded: 0, refunded: false,
+        currency: "jpy", paid: true, status: "succeeded", metadata: intent.metadata
+      });
       return Response.json(intent);
     }
+    const charge = charges.get(path.slice("/v1/charges/".length));
+    if (method === "GET" && path.startsWith("/v1/charges/") && charge) return Response.json(charge);
     unexpected.push(`${method} ${path}`);
     throw new Error(`Unexpected Stripe fixture request ${method} ${path}`);
   }
 
   const workerContext = { waitUntil() {} };
   const adminHeaders = { "x-admin-token": adminToken };
-  async function upgrade(targetTier = "silver", { token = adminToken, confirmation = applicationCode } = {}) {
+  async function administer(payload, { token = adminToken, confirmation = applicationCode } = {}) {
     const response = await worker.fetch(new Request(`${adminUrl}/${applicationId}`, {
       method: "PATCH",
       headers: { "content-type": "application/json", origin, ...(token ? { "x-admin-token": token } : {}) },
       body: JSON.stringify({
-        action: "apply_plan_upgrade", target_tier: targetTier, confirm_application_code: confirmation,
-        sendEmail: true
+        ...payload, confirm_application_code: confirmation, sendEmail: true
       })
     }), env, workerContext);
     const body = response.headers.get("content-type")?.includes("application/json")
       ? await response.json() : await response.text();
     return { status: response.status, body };
+  }
+  function upgrade(targetTier = "silver", { expectedDifference, ...options } = {}) {
+    return administer({
+      action: "apply_plan_upgrade", target_tier: targetTier, expected_difference_jpy: expectedDifference
+    }, options);
+  }
+  function deposit(options) {
+    return administer({ action: "apply_gold_deposit" }, options);
   }
   async function webhook(id, type, object) {
     const body = JSON.stringify({ id, type, livemode: false, data: { object } });
@@ -241,11 +268,18 @@ function fixture({ balance = 20000, originalCustomer = customerId } = {}) {
     assert.equal(values.length, keys.length, "fixture values are simple unquoted cells");
     return Object.fromEntries(keys.map((key, index) => [key, values[index]]));
   }
+  async function publicSummary() {
+    const response = await worker.fetch(new Request(origin + "/api/festa60/public-summary"), env, workerContext);
+    const body = await response.json();
+    assert.equal(response.status, 200, JSON.stringify(body));
+    return body.summary;
+  }
   return {
-    sqlite, stripeFetch, upgrade, webhook, adminView, adminExport, intents, debits, unexpected,
+    sqlite, stripeFetch, upgrade, deposit, webhook, adminView, adminExport, publicSummary, intents, charges, debits, unexpected,
     row: () => sqlite.prepare("SELECT * FROM applications").get(),
     originalPayment: () => sqlite.prepare("SELECT * FROM payments").get(),
     upgrades: () => sqlite.prepare("SELECT * FROM application_plan_upgrades ORDER BY applied_at").all(),
+    depositRow: () => sqlite.prepare("SELECT * FROM application_plan_upgrade_deposits").get(),
     auditCount: (action) => sqlite.prepare("SELECT COUNT(*) AS count FROM audit_logs WHERE action = ?").get(action).count,
     cashBalance: () => balance,
     fund: (amount) => { balance += amount; }
@@ -382,4 +416,130 @@ await runFixture({}, async (f) => {
   assert.equal(gold.donation_equivalent_jpy, 25000);
 });
 
-console.log("PASS FESTA plan upgrades: signed webhooks, paid totals, retained balance, concurrency and verification failures.");
+await runFixture({}, async (f) => {
+  assert.equal((await f.deposit({ token: null })).status, 401);
+  assert.equal((await f.deposit()).status, 409, "an already confirmed Silver plan is required");
+  assert.equal(f.depositRow(), undefined);
+  persistedBronze(f);
+  ok(await f.upgrade());
+  assert.equal((await f.deposit({ confirmation: "FESTA-TEST-WRONG" })).status, 400);
+
+  const summaryBeforeDeposit = await f.publicSummary();
+  const expectedDeposit = {
+    ok: true, application_code: applicationCode, plan_tier: "silver",
+    deposit_amount_jpy: 10000, cash_balance_jpy: 0, gold_remaining_jpy: 10000
+  };
+  for (const result of await Promise.all([f.deposit(), f.deposit()])) {
+    assert.deepEqual(ok(result), expectedDeposit);
+  }
+  assert.deepEqual(ok(await f.deposit()), expectedDeposit);
+  const deposit = f.depositRow();
+  assert.equal(deposit.amount_jpy, 10000);
+  assert.equal(deposit.status, "applied");
+  assert.equal(f.intents.size, 2);
+  assert.deepEqual(f.debits, [10000, 10000], "retries of a deposit debit it once");
+  assert.equal(f.cashBalance(), 0);
+
+  const intent = f.intents.get(deposit.stripe_payment_intent_id);
+  ok(await f.webhook("evt_fixture_deposit_paid", "payment_intent.succeeded", intent));
+  assert.equal(ok(await f.webhook("evt_fixture_deposit_paid", "payment_intent.succeeded", intent)).duplicate, true);
+  assert.deepEqual(f.debits, [10000, 10000]);
+
+  const silver = await f.adminView();
+  assert.equal(silver.ticket_type, "obog__silver");
+  assert.equal(silver.amount_total, 36000);
+  assert.equal(silver.amount_received_jpy, 36000);
+  assert.equal(silver.donation_equivalent_jpy, 10200);
+  assert.equal(silver.unreconciled_amount_jpy, 0);
+  assert.equal(silver.plan_upgrade_deposit_amount_jpy, 10000);
+  assert.equal(silver.plan_upgrade_deposit_status, "applied");
+  const silverExport = await f.adminExport();
+  assert.equal(silverExport.plan_upgrade_deposit_amount_jpy, "10000");
+  assert.equal(silverExport.amount_received_jpy, "36000");
+  const summaryAfterDeposit = await f.publicSummary();
+  assert.deepEqual(summaryAfterDeposit.plan_counts, summaryBeforeDeposit.plan_counts);
+  assert.equal(summaryAfterDeposit.donation_equivalent_jpy, summaryBeforeDeposit.donation_equivalent_jpy);
+
+  const beforeFunding = await f.upgrade("gold", { expectedDifference: 10000 });
+  assert.equal(beforeFunding.status, 409);
+  assert.equal(beforeFunding.body.error, "insufficient_cash_balance");
+  assert.equal(beforeFunding.body.difference_jpy, 10000);
+  assert.equal(beforeFunding.body.cash_balance_jpy, 0);
+  f.fund(10000);
+  const staleAmount = await f.upgrade("gold", { expectedDifference: 20000 });
+  assert.equal(staleAmount.status, 409);
+  assert.equal(f.cashBalance(), 10000, "a stale confirmed amount cannot debit the balance");
+  const applied = ok(await f.upgrade("gold", { expectedDifference: 10000 }));
+  assert.equal(applied.plan_tier, "gold");
+  assert.equal(applied.difference_jpy, 10000);
+  assert.equal(applied.deposit_credit_jpy, 10000);
+  assert.equal(applied.cash_balance_jpy, 0);
+  const gold = await f.adminView();
+  assert.equal(gold.amount_total, 56000);
+  assert.equal(gold.amount_received_jpy, 56000);
+  assert.equal(gold.donation_equivalent_jpy, 25000);
+  assert.equal(gold.plan_upgrade_deposit_amount_jpy, 0);
+  assert.equal(f.upgrades().find((upgrade) => upgrade.to_ticket_type === "obog__gold").deposit_id, deposit.id);
+  assert.deepEqual(f.debits, [10000, 10000, 10000], "Gold uses the held deposit and collects only 10,000 more");
+  assert.equal((await f.publicSummary()).donation_equivalent_jpy, 25000);
+
+  const charge = f.charges.get(intent.latest_charge);
+  charge.amount_refunded = 10000;
+  charge.refunded = true;
+  ok(await f.webhook("evt_fixture_credited_deposit_refunded", "charge.refunded", charge));
+  assert.equal(f.depositRow().status, "review");
+  const afterRefund = await f.adminView();
+  assert.equal(afterRefund.ticket_type, "obog__gold");
+  assert.equal(afterRefund.payment_status, "paid");
+  assert.equal(afterRefund.amount_received_jpy, 46000);
+  assert.equal(afterRefund.plan_upgrade_needs_review, 1);
+});
+
+await runFixture({}, async (f) => {
+  ok(await f.upgrade());
+  ok(await f.deposit());
+  const intent = f.intents.get(f.depositRow().stripe_payment_intent_id);
+  const charge = f.charges.get(intent.latest_charge);
+  charge.amount_refunded = 10000;
+  charge.refunded = true;
+  f.fund(10000);
+  const beforeRefundWebhook = await f.upgrade("gold", { expectedDifference: 10000 });
+  assert.equal(beforeRefundWebhook.status, 409);
+  assert.equal(beforeRefundWebhook.body.error, "deposit_review_required");
+  assert.deepEqual(f.debits, [10000, 10000], "a deposit already refunded in Stripe cannot be reused");
+  ok(await f.webhook("evt_fixture_deposit_refunded", "charge.refunded", charge));
+  assert.equal(f.depositRow().status, "refunded");
+  assert.equal(f.depositRow().refunded_amount_jpy, 10000);
+  const silver = await f.adminView();
+  assert.equal(silver.ticket_type, "obog__silver");
+  assert.equal(silver.amount_received_jpy, 36000);
+  assert.equal(silver.donation_equivalent_jpy, 10200);
+  assert.equal(silver.payment_status, "paid");
+  assert.equal(silver.attendance_status, "confirmed");
+  assert.equal(silver.plan_upgrade_deposit_amount_jpy, 0);
+});
+
+await runFixture({ balance: 19999 }, async (f) => {
+  ok(await f.upgrade());
+  const result = await f.deposit();
+  assert.equal(result.status, 409);
+  assert.equal(result.body.error, "insufficient_cash_balance");
+  assert.equal(f.depositRow(), undefined);
+  assert.equal(f.cashBalance(), 9999);
+  assert.deepEqual(f.debits, [10000]);
+});
+
+await runFixture({}, async (f) => {
+  ok(await f.upgrade());
+  f.fund(10000);
+  const results = await Promise.all([f.deposit(), f.upgrade("gold", { expectedDifference: 20000 })]);
+  assert.ok(results.every(({ status }) => status === 200 || status === 409), JSON.stringify(results));
+  assert.ok(results.some(({ status }) => status === 200));
+  const row = await f.adminView();
+  const isGold = row.ticket_type === "obog__gold";
+  assert.equal(row.amount_received_jpy, isGold ? 56000 : 36000);
+  assert.equal(row.plan_upgrade_deposit_amount_jpy, isGold ? 0 : 10000);
+  assert.equal(f.cashBalance(), isGold ? 0 : 10000);
+});
+
+console.log("PASS FESTA plan upgrades and deposits: signed webhooks, paid totals, retained funds, concurrency and verification failures.");

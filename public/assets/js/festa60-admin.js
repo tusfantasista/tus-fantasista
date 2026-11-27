@@ -6,7 +6,8 @@ import { ATTENDING_PLAN_TOTALS, splitTicketType } from "./festa60-pricing.js";
   const API_URL = "../api/festa60/admin/applications";
   const CONFIG_URL = "../api/festa60/config";
   const NEXT_SUPPORT_TIER = { bronze: "silver", silver: "gold" };
-  const submittedPlanUpgrades = new Set();
+  const GOLD_DEPOSIT_AMOUNT = 10000;
+  const planActionLocks = new Map();
 
   const state = {
     applications: [],
@@ -258,6 +259,7 @@ import { ATTENDING_PLAN_TOTALS, splitTicketType } from "./festa60-pricing.js";
   }
 
   async function loadApplications() {
+    const awaitingReload = [...planActionLocks].filter(([, phase]) => phase === "reload");
     elements.refreshButton.disabled = true;
     elements.message.hidden = false;
     elements.message.className = "admin-message";
@@ -279,6 +281,7 @@ import { ATTENDING_PLAN_TOTALS, splitTicketType } from "./festa60-pricing.js";
       renderBankTransferAlerts();
       applyFilters();
       elements.lastUpdated.textContent = `最終更新 ${formatDateTime(new Date().toISOString())}`;
+      for (const [applicationId] of awaitingReload) planActionLocks.delete(applicationId);
       return true;
     } catch (error) {
       elements.message.hidden = false;
@@ -608,49 +611,67 @@ import { ATTENDING_PLAN_TOTALS, splitTicketType } from "./festa60-pricing.js";
     const { base_ticket_type: baseType, support_tier: sourceTier } = splitTicketType(application.ticket_type);
     const targetTier = NEXT_SUPPORT_TIER[sourceTier];
     if (!targetTier || !baseType.startsWith("obog") || Number(application.plan_upgrade_needs_review) === 1
+      || application.plan_upgrade_deposit_status === "review"
       || application.payment_provider !== "stripe" || application.payment_method !== "bank_transfer"
       || !application.stripe_customer_id || !application.stripe_payment_intent_id
       || effectivePaymentStatus(application) !== "paid" || application.status !== "confirmed"
       || application.attendance_status !== "confirmed") return null;
 
+    const depositStatus = targetTier === "gold" ? application.plan_upgrade_deposit_status || null : null;
+    const depositAmount = targetTier === "gold" ? Number(application.plan_upgrade_deposit_amount_jpy || 0) : 0;
+    const depositCredit = depositStatus === "applied" && depositAmount === GOLD_DEPOSIT_AMOUNT ? depositAmount : 0;
     const balance = Number(application.unreconciled_amount_jpy ?? NaN);
     return {
-      key: `${application.application_code}:${targetTier}`,
       baseType,
       targetTier,
       targetLabel: planLabel(`${baseType}__${targetTier}`),
-      difference: ATTENDING_PLAN_TOTALS[targetTier] - ATTENDING_PLAN_TOTALS[sourceTier],
+      difference: ATTENDING_PLAN_TOTALS[targetTier] - ATTENDING_PLAN_TOTALS[sourceTier] - depositCredit,
+      depositCredit,
+      depositStatus,
+      canApply: depositCredit > 0 || (depositAmount === 0 && [null, "refunded"].includes(depositStatus)),
+      canRecordDeposit: targetTier === "gold" && depositAmount === 0 && [null, "prepared"].includes(depositStatus),
       recordedBalance: Number.isSafeInteger(balance) && balance >= 0 ? balance : null
     };
   }
 
-  function renderPlanUpgrade(application) {
-    if (Number(application.plan_upgrade_needs_review) === 1) return `
+  function renderPlanUpgrade(application, upgrade) {
+    if (Number(application.plan_upgrade_needs_review) === 1 || application.plan_upgrade_deposit_status === "review"
+      || (upgrade && !upgrade.canApply && !upgrade.canRecordDeposit)) return `
       <section class="admin-amount-adjustment" aria-labelledby="plan-upgrade-title">
         <h3 id="plan-upgrade-title">プラン変更の状況を要確認</h3>
         <p>先にStripeの決済状況と事務局の変更記録を照合してください。</p>
       </section>`;
 
-    const upgrade = availablePlanUpgrade(application);
     if (!upgrade) return "";
 
-    const { recordedBalance, difference } = upgrade;
+    const { recordedBalance, difference, depositStatus, depositCredit, canApply, canRecordDeposit } = upgrade;
+    const disabled = planActionLocks.has(application.id) ? "disabled" : "";
+    const id = escapeHtml(application.id);
     let balanceSummary = "CRMに未消込残高の記録がありません。";
     if (recordedBalance !== null) {
-      const balance = formatYen(recordedBalance);
-      balanceSummary = recordedBalance >= difference
-        ? `CRM記録の未消込残高 ${balance}・変更後の見込み残高 ${formatYen(recordedBalance - difference)}。`
-        : `CRM記録の未消込残高 ${balance}・差額まで ${formatYen(difference - recordedBalance)}不足。`;
+      balanceSummary = `CRM記録の未消込残高 ${formatYen(recordedBalance)}`;
+      if (canApply) balanceSummary += recordedBalance >= difference
+        ? `・プラン変更後の見込み残高 ${formatYen(recordedBalance - difference)}`
+        : `・プラン変更まで ${formatYen(difference - recordedBalance)}不足`;
+      balanceSummary += "。";
     }
 
     return `
       <section class="admin-amount-adjustment" aria-labelledby="plan-upgrade-title">
         <h3 id="plan-upgrade-title">上位プランへ変更</h3>
-        <p><strong>${escapeHtml(planLabel(application.ticket_type))} → ${escapeHtml(upgrade.targetLabel)}</strong><br>充当する差額 ${formatYen(difference)}</p>
+        ${canApply ? `<p><strong>${escapeHtml(planLabel(application.ticket_type))} → ${escapeHtml(upgrade.targetLabel)}</strong><br>${depositCredit > 0 ? `内金 ${formatYen(depositCredit)} を充当・残りの差額` : "充当する差額"} ${formatYen(difference)}</p>` : ""}
+        ${depositStatus === "refunded" ? "<p>ゴールド変更の内金に返金手続きの記録があります。</p>" : ""}
         <p>${balanceSummary}<br>実行時にStripeで最新の未消込残高を確認します。</p>
-        <div class="admin-amount-adjustment__controls">
-          <button class="admin-button admin-button--primary" type="button" data-apply-plan-upgrade="${escapeHtml(application.id)}" ${submittedPlanUpgrades.has(upgrade.key) ? "disabled" : ""}>残高を確認してプランを変更</button>
-        </div>
+        ${canApply ? `<div class="admin-amount-adjustment__controls">
+          <button class="admin-button admin-button--primary" type="button" data-plan-balance-action="upgrade" data-apply-plan-upgrade="${id}" ${disabled}>残高を確認してプランを変更</button>
+        </div>` : ""}
+        ${canRecordDeposit ? `<div class="admin-gold-deposit">
+          <h4>ゴールド変更の内金</h4>
+          <p>シルバーのまま ${formatYen(GOLD_DEPOSIT_AMOUNT)} を内金として記録します。内金はゴールドへ変更する際に使います。</p>
+          <div class="admin-amount-adjustment__controls">
+            <button class="admin-button" type="button" data-plan-balance-action="deposit" data-apply-gold-deposit="${id}" ${disabled}>${depositStatus === "prepared" ? "内金の処理を再確認" : `内金 ${formatYen(GOLD_DEPOSIT_AMOUNT)} を記録`}</button>
+          </div>
+        </div>` : ""}
         <p class="admin-amount-adjustment__message" data-plan-upgrade-message role="status" aria-live="polite"></p>
       </section>`;
   }
@@ -660,6 +681,7 @@ import { ATTENDING_PLAN_TOTALS, splitTicketType } from "./festa60-pricing.js";
     if (!application) return;
     const paymentStatus = effectivePaymentStatus(application);
     const stripeUrl = stripePaymentUrl(application.stripe_payment_intent_id);
+    const upgrade = availablePlanUpgrade(application);
     const address = [application.postal_code ? `〒${application.postal_code}` : "", application.prefecture, application.city, application.street_address, application.building]
       .filter(Boolean)
       .join(" ");
@@ -718,6 +740,7 @@ import { ATTENDING_PLAN_TOTALS, splitTicketType } from "./festa60-pricing.js";
             ${detailRow("支払予定額", formatYen(expectedAmount(application)))}
             ${detailRow("入金確認額", formatYen(receivedAmount(application)))}
             ${Number(application.plan_upgrade_amount_jpy || 0) > 0 ? detailRow("プラン変更に充当した額", formatYen(application.plan_upgrade_amount_jpy)) : ""}
+            ${Number(application.plan_upgrade_deposit_amount_jpy || 0) > 0 ? detailRow("ゴールド変更の内金", formatYen(application.plan_upgrade_deposit_amount_jpy)) : ""}
             ${detailRow("不足額", formatYen(outstandingAmount(application)))}
             ${detailRow("入金状態", paymentLabels[paymentStatus] || paymentStatus)}
             ${detailRow("入金確認日", formatDateTime(application.paid_at))}
@@ -748,7 +771,7 @@ import { ATTENDING_PLAN_TOTALS, splitTicketType } from "./festa60-pricing.js";
         <a class="admin-button" href="mailto:${escapeHtml(application.email || "")}">メールを作成</a>
       </div>
       ${planUpgradeNotice ? `<p class="admin-message" role="status">${escapeHtml(planUpgradeNotice)}</p>` : ""}
-      ${renderPlanUpgrade(application)}
+      ${renderPlanUpgrade(application, upgrade)}
       ${Number(application.donation_equivalent_jpy || 0) > 0 ? `
         <section class="admin-amount-adjustment" aria-labelledby="supporter-publication-title">
           <h3 id="supporter-publication-title">寄付者名掲載・当日表示を更新</h3>
@@ -795,46 +818,76 @@ import { ATTENDING_PLAN_TOTALS, splitTicketType } from "./festa60-pricing.js";
   async function applyPlanUpgrade(applicationId, button) {
     const application = state.applications.find((item) => item.id === applicationId);
     const upgrade = application && availablePlanUpgrade(application);
-    if (!upgrade || button.disabled || submittedPlanUpgrades.has(upgrade.key)) return;
+    if (!upgrade?.canApply) return;
 
-    const { application_code: applicationCode } = application;
-    if (!window.confirm(`${applicationCode} ${application.full_name || ""}\n${planLabel(application.ticket_type)} → ${upgrade.targetLabel}\nStripeの未消込残高から差額 ${formatYen(upgrade.difference)} を充当して変更しますか？`)) return;
+    const creditDescription = upgrade.depositCredit > 0 ? `\n記録済みの内金 ${formatYen(upgrade.depositCredit)} も差額に充当します。` : "";
+    await submitPlanBalanceAction(application, button, {
+      payload: {
+        action: "apply_plan_upgrade",
+        target_tier: upgrade.targetTier,
+        expected_difference_jpy: upgrade.difference
+      },
+      confirmation: `${planLabel(application.ticket_type)} → ${upgrade.targetLabel}${creditDescription}\nStripeの未消込残高から差額 ${formatYen(upgrade.difference)} を充当して変更しますか？`,
+      notice(result) {
+        const confirmedLabel = planLabel(`${upgrade.baseType}__${result.plan_tier}`);
+        return `現在のプランは${confirmedLabel}です。Stripe残高からの充当額 ${formatYen(result.difference_jpy)}、未消込残高 ${formatYen(result.cash_balance_jpy)}。`;
+      }
+    });
+  }
 
-    submittedPlanUpgrades.add(upgrade.key);
-    button.disabled = true;
+  async function applyGoldDeposit(applicationId, button) {
+    const application = state.applications.find((item) => item.id === applicationId);
+    const upgrade = application && availablePlanUpgrade(application);
+    if (!upgrade?.canRecordDeposit) return;
+
+    const operation = upgrade.depositStatus === "prepared" ? "処理中のゴールド変更の内金を再確認します。\n" : "";
+    await submitPlanBalanceAction(application, button, {
+      payload: { action: "apply_gold_deposit" },
+      confirmation: `${operation}Stripeの未消込残高から ${formatYen(GOLD_DEPOSIT_AMOUNT)} を充当し、ゴールド変更の内金として記録します。\n現在のプランはシルバーのままです。内金は参加費・寄付相当額と分けて記録します。\n続けますか？`,
+      notice(result) {
+        return `ゴールド変更の内金 ${formatYen(result.deposit_amount_jpy)} を記録しました。現在のプランはシルバーです。ゴールドまで残り ${formatYen(result.gold_remaining_jpy)}、Stripe未消込残高 ${formatYen(result.cash_balance_jpy)}。`;
+      }
+    });
+  }
+
+  async function submitPlanBalanceAction(application, button, { payload, confirmation, notice }) {
+    const { id: applicationId, application_code: applicationCode } = application;
+    if (button.disabled || planActionLocks.has(applicationId)) return;
+    if (!window.confirm(`${applicationCode} ${application.full_name || ""}\n${confirmation}`)) return;
+
+    planActionLocks.set(applicationId, "pending");
+    for (const actionButton of elements.dialogContent.querySelectorAll("[data-plan-balance-action]")) actionButton.disabled = true;
     const message = elements.dialogContent.querySelector("[data-plan-upgrade-message]");
     if (message) message.textContent = "Stripeの残高を確認しています。";
     let result;
     try {
       result = await patchJson(`${API_URL}/${encodeURIComponent(applicationCode)}`, {
-        action: "apply_plan_upgrade",
-        target_tier: upgrade.targetTier,
+        ...payload,
         confirm_application_code: applicationCode
       });
     } catch (error) {
-      submittedPlanUpgrades.delete(upgrade.key);
+      planActionLocks.delete(applicationId);
       if (elements.dialog.open && elements.dialog.dataset.applicationId === applicationId) {
         const currentMessage = elements.dialogContent.querySelector("[data-plan-upgrade-message]");
-        const currentButton = elements.dialogContent.querySelector("[data-apply-plan-upgrade]");
         if (currentMessage) {
           const balance = error.result?.cash_balance_jpy;
           const latestBalance = Number.isSafeInteger(balance) && balance >= 0 ? ` Stripe確認残高 ${formatYen(balance)}。` : "";
-          currentMessage.textContent = `プランを変更できませんでした。${error.message}${latestBalance}`;
+          currentMessage.textContent = `${error.message}${latestBalance}`;
         }
-        if (currentButton) currentButton.disabled = false;
+        for (const actionButton of elements.dialogContent.querySelectorAll("[data-plan-balance-action]")) actionButton.disabled = false;
       }
       return;
     }
 
-    const confirmedLabel = planLabel(`${upgrade.baseType}__${result.plan_tier}`);
-    const notice = `${applicationCode} の現在のプランは${confirmedLabel}です。充当額 ${formatYen(result.difference_jpy)}、未消込残高 ${formatYen(result.cash_balance_jpy)}。`;
+    planActionLocks.set(applicationId, "reload");
+    const success = `${applicationCode} ${notice(result)}`;
     const reloaded = await loadApplications();
     if (elements.dialog.open && elements.dialog.dataset.applicationId === applicationId) {
       if (reloaded) {
-        openApplicationDetail(applicationId, notice);
+        openApplicationDetail(applicationId, success);
       } else {
         const currentMessage = elements.dialogContent.querySelector("[data-plan-upgrade-message]");
-        if (currentMessage) currentMessage.textContent = `${notice} 一覧を再読み込みしてください。`;
+        if (currentMessage) currentMessage.textContent = `${success} 一覧を再読み込みしてください。`;
       }
     }
   }
@@ -966,6 +1019,11 @@ import { ATTENDING_PLAN_TOTALS, splitTicketType } from "./festa60-pricing.js";
       const upgradeButton = event.target.closest("[data-apply-plan-upgrade]");
       if (upgradeButton) {
         await applyPlanUpgrade(upgradeButton.dataset.applyPlanUpgrade, upgradeButton);
+        return;
+      }
+      const depositButton = event.target.closest("[data-apply-gold-deposit]");
+      if (depositButton) {
+        await applyGoldDeposit(depositButton.dataset.applyGoldDeposit, depositButton);
         return;
       }
       const supporterButton = event.target.closest("[data-save-supporter-publication]");
